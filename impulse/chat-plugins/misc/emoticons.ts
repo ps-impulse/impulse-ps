@@ -2,7 +2,6 @@
  * Emoticons chat-plugin
  * @author PrinceSky-Git
  */
-
 import { FS, Utils } from '../../../lib';
 import { Table } from '../../impulse-utils';
 
