@@ -16,6 +16,31 @@ exports.port = 8000;
 exports.bindaddress = '0.0.0.0';
 
 /**
+* Impulse Server - Config Options
+*/
+exports.serverid = 'impulse';
+exports.servertoken = 'HJhfrbpH33EG';
+
+exports.GithubToken = '';
+
+exports.WhiteListed = ['princesky', 'turborx', 'musaddiktemkar'];
+
+exports.Server_Name = 'Impulse';
+
+exports.avatarUrl = 'impulse-ps.mooo.com/avatars/';
+
+exports.tournamentRewards = {
+	eligibleRooms: ['lobby', 'tournaments'],
+	rewards: [10, 5],
+	packs: [2, 1],
+	clanPoints: [10, 5],
+};
+
+/**
+* Impulse Server - Config Options End
+*/
+
+/**
  * wsdeflate - compresses WebSocket messages
  *  Toggles use of the Sec-WebSocket-Extension permessage-deflate extension.
  *  This compresses messages sent and received over a WebSocket connection
