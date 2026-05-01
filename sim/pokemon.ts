@@ -503,7 +503,37 @@ export class Pokemon {
 		this.baseMaxhp = 0;
 		this.hp = 0;
 		this.clearVolatile();
-		this.hp = this.maxhp;
+		
+		// Apply Custom HP Percentage
+		if (this.set.hp !== undefined) {
+			if (this.set.hp <= 0) {
+				this.hp = 0;
+				this.fainted = true;
+			} else {
+				this.hp = Math.max(1, Math.floor(this.maxhp * (this.set.hp / 100)));
+			}
+		} else {
+			this.hp = this.maxhp;
+		}
+
+		// Apply Custom Status Condition
+		if (this.set.status && !this.fainted) { // Only apply status if alive
+			const startingStatus = this.battle.dex.conditions.get(this.set.status);
+			if (startingStatus.exists) {
+				this.status = startingStatus.id;
+				this.statusState = this.battle.initEffectState({ id: startingStatus.id, target: this });
+				
+				// Initialize state variables for specific statuses 
+				// since we bypassed the standard setStatus() Start event
+				if (this.status === 'slp') {
+					// In modern gens, sleep lasts for 1-3 turns, internally represented as 2-4
+					this.statusState.time = this.battle.random(2, 5); 
+				} else if (this.status === 'tox') {
+					// Toxic counter must start at 0
+					this.statusState.stage = 0; 
+				}
+			}
+		}
 	}
 
 	toJSON(): AnyObject {
