@@ -1,1 +1,0 @@
-Custom Chat Plugins Directory.
