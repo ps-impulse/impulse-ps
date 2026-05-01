@@ -2,7 +2,6 @@
 * Clearall chat-plugin
 * Refactor by @PrinceSky-Git
 */
-
 interface ClearResult {
 	cleared: string[];
 	failed: string[];
