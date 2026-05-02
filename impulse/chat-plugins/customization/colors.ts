@@ -1,12 +1,12 @@
 /*
-* Custom Colors chat-plugin
+* Pokemon Showdown - Impulse Server
+* Custom Colors Plugin.
 * Refactor By @PrinceSky-Git
 */
 import * as crypto from 'crypto';
 import https from 'https';
 import { FS, Utils } from '../../../lib';
 import { toID } from '../../../sim/dex';
-import { ensureCustomCSS } from '../../impulse-utils';
 
 interface RGB { R: number; G: number; B: number }
 interface CustomColors { [userid: string]: string }
@@ -32,10 +32,7 @@ const loadData = async (): Promise<void> => {
 	}
 };
 
-void (async () => {
-	await ensureCustomCSS();
-	await loadData();
-})();
+void loadData();
 
 const saveData = (): void => {
 	FS(DATA_FILE).writeUpdate(() => JSON.stringify(customColors));
@@ -135,19 +132,29 @@ const reloadCSS = () => {
 
 Impulse.reloadCSS = reloadCSS;
 
-const generateCSSRule = (name: string, color: string): string => {
+const generateCSS = (name: string, color: string): string => {
+	if (!validateHexColor(color)) return '';
 	const id = toID(name);
-	return `[class$="chatmessage-${id}"] strong, [class$="chatmessage-${id} mine"] strong, ` +
-		`[class$="chatmessage-${id} highlighted"] strong, [id$="-userlist-user-${id}"] strong em, ` +
-		`[id$="-userlist-user-${id}"] strong, [id$="-userlist-user-${id}"] span ` +
-		`{ color: ${color} !important; }`;
+	const userbarColorDecl = `color: ${color} !important; -webkit-text-fill-color: ${color} !important; text-shadow: none !important;`;
+	return [
+		`[id$="userlist-user-${id}"] button.username:not([data-away]), [id$="userlist-user-${id}"] button.username:not([data-away]) *:not(em.group) { color: ${color} !important; }`,
+		`.chatmessage-${id} .username:not([data-away]), .chatmessage-${id} .username:not([data-away]) * { color: ${color} !important; }`,
+		`.chatmessage-${id} .username:not([data-away]) .usernametext { color: ${color} !important; }`,
+		`.chat.chatmessage-${id} strong .username:not([data-away]), .chat.chatmessage-${id} strong .username:not([data-away]) * { color: ${color} !important; }`,
+		`.userbar .username:not([data-away])[data-name="${id}" i], .userbar .username:not([data-away])[data-name="${id}" i] * { ${userbarColorDecl} }`,
+		`.userbar .username:not([data-away])[data-name="${id}" i] .usernametext { ${userbarColorDecl} }`,
+		`body[data-userid="${id}"] .userbar .username:not([data-away]), body[data-userid="${id}"] .userbar .username:not([data-away]) * { ${userbarColorDecl} }`,
+		`body[data-userid="${id}"] .userbar .username:not([data-away]) .usernametext { ${userbarColorDecl} }`,
+		`body.userid-${id} .userbar .username:not([data-away]), body.userid-${id} .userbar .username:not([data-away]) * { ${userbarColorDecl} }`,
+		`body.userid-${id} .userbar .username:not([data-away]) .usernametext { ${userbarColorDecl} }`,
+	].join('\n') + '\n';
 };
 
 const updateColorsCSS = async () => {
 	try {
 		const colors = getCustomColors();
 		const cssRules = Object.entries(colors).map(([userid, color]) => {
-			return generateCSSRule(userid, color);
+			return generateCSS(userid, color);
 		}).join('\n');
 
 		const cssBlock = `${COLORS_START_TAG}\n${cssRules}\n${COLORS_END_TAG}`;
@@ -274,15 +281,32 @@ export const commands: Chat.ChatCommands = {
 
 		help() {
 			if (!this.runBroadcast()) return;
-			this.sendReplyBox(
-				`<div style="max-height: 350px; overflow-y: auto;"><center><strong><h4>Custom Color Commands</strong></h4><hr>Commands Alias: /cc</center><hr>` +
-				`<b>/customcolor set [user], [hex]</b> - Set color for a user. Requires: ~<hr>` +
-				`<b>/customcolor delete [user]</b> - Delete color for a user. Requires: ~<hr>` +
-				`<b>/customcolor reload</b> - Reload all custom colors. Requires: ~<hr>` +
-				`<b>/customcolor preview [user], [hex]</b> - Preview color for a user.<hr>` +
-				`<center><small>Format: #RGB or #RRGGBB</small></center></div>`
-			);
-		},		
+			const helpList = [
+				{
+					cmd: "/customcolor set [user], [hex]",
+					desc: "Set color for a user. Requires: &.",
+				},
+				{
+					cmd: "/customcolor delete [user]",
+					desc: "Delete color for a user. Requires: &.",
+				},
+				{
+					cmd: "/customcolor reload",
+					desc: "Reload all custom colors. Requires: &.",
+				},
+				{
+					cmd: "/customcolor preview [user], [hex]",
+					desc: "Preview color for a user.",
+				},
+			];
+			const html = `<center><strong>Custom Color Commands:</strong><br>Alias: /cc</center>` +
+				`<hr><ul style="list-style-type:none;padding-left:0;">` +
+				helpList.map(({ cmd, desc }, i) =>
+					`<li><b>${cmd}</b> - ${desc}</li>${i < helpList.length - 1 ? '<hr>' : ''}`
+				).join('') +
+				`</ul><small>Format: #RGB or #RRGGBB</small>`;
+			this.sendReplyBox(html);
+		},
 	},
 	cc: 'customcolor',
 	customcolorhelp: 'customcolor.help',
