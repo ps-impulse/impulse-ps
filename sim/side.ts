@@ -1311,9 +1311,10 @@ export class Side {
 			break;
 		case 'move':
 			if (!pokemon.fainted && !pokemon.volatiles['commanding']) {
-				// Bypass the restriction if we are in a PokéRogue or PokéRogue Endless battle
+				// Bypass the restriction if we are in a PokéRogue Format Battle.
 				// This Allows Catching in Pokerogue Formats.
-				if (['pokerogue', 'pokerogueendless'].includes(this.battle.format.id)) break;
+				if (['gen9pokerogue', 'gen9pokerogueearly'].includes(this.battle.format.id)) break;
+				
 				return this.emitChoiceError(`Can't pass: Your ${pokemon.name} must make a move (or switch)`);
 			}
 			break;
