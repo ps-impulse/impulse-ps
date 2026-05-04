@@ -15,12 +15,12 @@ exports.port = 8000;
  */
 exports.bindaddress = '0.0.0.0';
 
+exports.serverid = 'impulse';
+exports.servertoken = 'qkWYr7c7pU68';
+
 /**
 * Impulse Server - Config Options
 */
-exports.serverid = 'impulse';
-exports.servertoken = 'HJhfrbpH33EG';
-
 exports.GithubToken = '';
 
 exports.WhiteListed = ['princesky', 'turborx', 'musaddiktemkar'];
@@ -78,7 +78,13 @@ exports.wsdeflate = {
  *  something.
  * @type {{port: number, options: {key: string, cert: string}} | null}
  */
-exports.ssl = null;
+exports.ssl = {
+	port: 443,
+	options: {
+		key: 'home/ubuntu/impulse-ps/privkey.pem',
+		cert: 'home/ubuntu/impulse-ps/fullchain.pem',
+	},
+};
 
 /*
 // example:
@@ -512,7 +518,7 @@ exports.appealurl = '';
  * replsocketprefix - the prefix for the repl sockets to be listening on
  * replsocketmode - the file mode bits to use for the repl sockets
  */
-exports.repl = false;
+exports.repl = true;
 exports.replsocketprefix = './logs/repl/';
 exports.replsocketmode = 0o600;
 
