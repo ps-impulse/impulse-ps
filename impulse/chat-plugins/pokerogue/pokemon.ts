@@ -97,35 +97,31 @@ export function expForLevel(level: number, expType = 'Medium Fast'): number {
         }
         return Math.floor(raw * 0.325 + getMediumFastExp(level) * 0.675);
 }
-	
+
 export function calcKillExp(
         enemySpeciesId: string,
         enemyLevel: number,
-        playerLevel: number,
         participantsCount: number,
         isBossFloor: boolean,
-        expCharmStacks: number,
         hasLuckyEgg = false,
         isTrainer = false
 ): number {
-        // Official formula: expValue = (baseExp * level) / 5 + 1
-        // Trainer battles multiply by 1.5
-        // Then split by participant count
-        // Then apply modifiers (Lucky Egg ×1.5, Exp. Charm +25% per stack)
+        // Official formula: expValue = floor((baseExp * level) / 5 + 1)
+        // Trainer/boss battles multiply by 1.5
+        // Split by participant count
+        // Lucky Egg (held item): +40% per stack — applied per-pokemon before Exp. Charm
+        // Exp. Charm (key item): applied globally AFTER, to all mons including benched — handled in applyExpShare
         const b = getExpYield(enemySpeciesId);
         const L = enemyLevel;
         const s = Math.max(1, participantsCount);
-
         const a = (isBossFloor || isTrainer) ? 1.5 : 1;
-
+ 
         let expValue = Math.floor((b * L) / 5 + 1);
         expValue = Math.floor(expValue * a);
         expValue = Math.floor(expValue / s);
-
-        let m = 1 + (0.25 * expCharmStacks);
-        if (hasLuckyEgg) m *= 1.5;
-
-        return Math.max(1, Math.floor(expValue * m));
+        if (hasLuckyEgg) expValue = Math.floor(expValue * 1.4);
+ 
+        return Math.max(1, expValue);
 }
 
 type MoveLearnCategory = 'M' | 'T' | 'L' | 'R' | 'E' | 'D' | 'S' | 'V' | 'C' | 'any';
