@@ -8,7 +8,7 @@ import {
         expForLevel,
         applyExpAndLevelUp, getLevelUpEvo,
         getLevelUpMoves, getMovesLearnedBetween,
-        calcKillExp, getExpType, getExpYield, botLevel,
+        calcKillExp, getExpType, botLevel,
         packTeam, TRAINERS,
 } from './pokemon';
 import { renderGamePage, refreshGamePage } from './render';
@@ -1515,7 +1515,8 @@ export const handlers: Chat.Handlers = {
 
                 if (toID(winner) === match.userId) {
                         const { expMap: rawExpMap, baseShareExpMap } = parseKillExp(logLines, state, match.floor, isBossFloor);
-						      const expMap = applyExpShare(rawExpMap, baseShareExpMap, state);
+                        const expMap = applyExpShare(rawExpMap, baseShareExpMap, state);
+
                         const totalExpEarned = [...rawExpMap.values()].reduce((sum, v) => sum + v, 0);
                         const expShareActive = (state.keyItems ?? []).includes(EXP_SHARE_NAME);
                         const detailMsgs: string[] = [];
