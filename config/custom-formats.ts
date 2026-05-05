@@ -1,6 +1,6 @@
 export const Formats: FormatList = [
 	{
-		section: "PokeRogue",
+		section: "S/V Singles",
 	},
 	{
 		name: "[Gen 9] PokeRogue",
@@ -9,6 +9,7 @@ export const Formats: FormatList = [
 			'Cancel Mod',
 			'HP Percentage Mod',
 			'PokeRogue Classic',
+			'PokeRogue EXP Tracker',
 		],
 		DefaultLevel: 1,
 		MaxLevel: 999999,
@@ -22,6 +23,7 @@ export const Formats: FormatList = [
 			'Cancel Mod',
 			'HP Percentage Mod',
 			'PokeRogue Classic',
+			'PokeRogue EXP Tracker',
 		],
 		DefaultLevel: 1,
 		MaxLevel: 999999,
