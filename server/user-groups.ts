@@ -2,7 +2,7 @@ import { FS } from '../lib/fs';
 import type { RoomSection } from './chat-commands/room-settings';
 import { toID } from '../sim/dex-data';
 
-export type GroupSymbol = '~' | '𝓕' | '#' | '𞋎' | '★' | '*' | '@' | '𝓞' | '%' | '☆' | '§' | '+' | '^' | ' ' | '‽' | '!';
+export type GroupSymbol = '~' | 'F' | '#' | 'L' | '★' | '*' | '@' | 'O' | '%' | '☆' | '§' | '+' | '^' | ' ' | '‽' | '!';
 export type EffectiveGroupSymbol = GroupSymbol | 'whitelist';
 export type AuthLevel = EffectiveGroupSymbol | 'unlocked' | 'trusted' | 'autoconfirmed';
 
