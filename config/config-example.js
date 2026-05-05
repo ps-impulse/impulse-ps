@@ -642,7 +642,7 @@ exports.grouplist = [
 	},
 	{
 		symbol: '𝓕',
-		id: "roomfounder",
+		id: "founder",
 		name: "Room Founder",
 		inherit: '@',
 		jurisdiction: 'u',
@@ -680,7 +680,7 @@ exports.grouplist = [
 	},
 	{
 		symbol: '𞋎',
-		id: "roomleader",
+		id: "leader",
 		name: "Room Leader",
 		inherit: '@',
 		jurisdiction: 'u',
@@ -730,7 +730,7 @@ exports.grouplist = [
 	},
 	{
 		symbol: '𝓞',
-		id: "roomoperator",
+		id: "operator",
 		name: "Room Operator",
 		inherit: '%',
 		jurisdiction: 'u',
