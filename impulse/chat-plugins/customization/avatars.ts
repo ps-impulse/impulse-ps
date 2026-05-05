@@ -10,7 +10,7 @@ const CONFIG = {
 	staffRoom: 'staff',
 	maxSize: 5 * 1024 * 1024,
 	timeout: 10000,
-	baseUrl: Config.Avatar_Url || 'impulse-ps.mooo.com/avatars/',
+	baseUrl: 'impulse-ps.mooo.com/avatars/',
 };
 
 const IMAGE_FORMATS: { [ext: string]: number[] } = {
