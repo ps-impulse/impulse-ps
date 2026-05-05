@@ -516,6 +516,7 @@ function renderMainView(state: PokeRogueState, user: User): string {
         buf += renderBtn('/pokerogue battle', 'Start battle', 'pr-btn primary');
         buf += renderBtn('/pokerogue view bag', 'Bag');
         buf += renderBtn('/pokerogue view shop', 'Shop');
+	     buf += `<br>`;
         buf += `</div>`;
 
         buf += `<div class="pr-section-title">Your team</div>`;
