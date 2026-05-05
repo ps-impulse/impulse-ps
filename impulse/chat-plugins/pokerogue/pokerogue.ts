@@ -103,32 +103,28 @@ function parseKillExp(
         floor: number,
         isBossFloor: boolean,
 ): { expMap: Map<number, number>, baseShareExpMap: Map<number, number> } {
-        // expMap          — final exp for each direct participant (post Lucky Egg, pre Exp. Charm)
-        // baseShareExpMap — accumulated (rawKillExp / participantCount) per benched mon per kill,
-        //                   used by applyExpShare to compute the Exp. All share
- 
         const p1SlotToTeamIdx: Record<string, number> = {};
         const p1TeamFainted = new Set<number>();
         const p2SlotSpecies: Record<string, string> = {};
         const p2SlotLevel: Record<string, number> = {};
- 
+
         const participatedAgainst: Record<string, Set<number>> = {};
         const lastAttackerSlot: Record<string, string> = {};
         const statusInflicter: Record<string, number> = {};
         const residualInflicter: Record<string, number> = {};
         const hazardSetter: Record<string, number> = {};
         const weatherSetByP1: Record<string, boolean> = {};
- 
+
         let lastAnyP1Slot: string | undefined;
         let lastMoveUser = '';
         let lastMoveTarget = '';
         let lastMoveName = '';
- 
+
         const expMap = new Map<number, number>();
         const baseShareExpMap = new Map<number, number>();
- 
+
         const isTrainerFloor = !!TRAINERS[floor.toString()];
- 
+
         for (const line of logLines) {
                 const p1Switch = /^\|(?:switch|drag)\|p1([a-z]): [^|]+\|([^|,]+)[^|]*\|(\d+)/.exec(line);
                 if (p1Switch) {
@@ -155,15 +151,15 @@ function parseKillExp(
                         }
                         lastAnyP1Slot = slot;
                         continue;
-					 }
+                }
 
-			  const p1Faint = /^\|faint\|p1([a-z]):/.exec(line);
+                const p1Faint = /^\|faint\|p1([a-z]):/.exec(line);
                 if (p1Faint) {
                         const idx = p1SlotToTeamIdx['p1' + p1Faint[1]];
                         if (idx !== undefined) p1TeamFainted.add(idx);
                         continue;
                 }
- 
+
                 const p2Switch = /^\|(?:switch|drag)\|p2([a-z]): [^|]+\|([^|,]+)(?:, L(\d+))?[^|]*\|/.exec(line);
                 if (p2Switch) {
                         const slot = 'p2' + p2Switch[1];
@@ -180,7 +176,7 @@ function parseKillExp(
                         }
                         continue;
                 }
- 
+
                 const moveMatch = /^\|move\|([p][12][a-z]): [^|]+\|([^|]+)\|([p][12][a-z]):/.exec(line);
                 if (moveMatch) {
                         const user = moveMatch[1];
@@ -189,7 +185,7 @@ function parseKillExp(
                         lastMoveName = move;
                         lastMoveUser = user;
                         lastMoveTarget = target;
- 
+
                         if (user.startsWith('p1')) {
                                 lastAnyP1Slot = user;
                                 if (target.startsWith('p2')) {
@@ -207,9 +203,8 @@ function parseKillExp(
                                                 const teamIdx = p1SlotToTeamIdx[user];
                                                 if (teamIdx !== undefined) residualInflicter[`${target}:${move}`] = teamIdx;
                                         }
-										  }
-
-									const WEATHER_MOVES: Record<string, string> = {
+                                }
+                                const WEATHER_MOVES: Record<string, string> = {
                                         raindance: 'rain', sunnyday: 'sun', sandstorm: 'sand',
                                         snowscape: 'snow', hail: 'hail', chillyreception: 'snow',
                                 };
@@ -223,7 +218,7 @@ function parseKillExp(
                         }
                         continue;
                 }
- 
+
                 const statusApply = /^\|-status\|p2([a-z]): [^|]+\|(brn|psn|tox)/.exec(line);
                 if (statusApply) {
                         const p2Slot = 'p2' + statusApply[1];
@@ -234,7 +229,7 @@ function parseKillExp(
                         }
                         continue;
                 }
- 
+
                 const residualStart = /^\|-start\|p2([a-z]): [^|]+\|(?:move: )?([^|[]+)/.exec(line);
                 if (residualStart) {
                         const p2Slot = 'p2' + residualStart[1];
@@ -246,23 +241,24 @@ function parseKillExp(
                         continue;
                 }
 
-			  let p2SlotTrigger = '';
+                let p2SlotTrigger = '';
                 const faintLine = /^\|faint\|p2([a-z]):/.exec(line);
                 if (faintLine) {
                         p2SlotTrigger = 'p2' + faintLine[1];
                 } else if (line.startsWith('|c|~|Gotcha!')) {
                         p2SlotTrigger = 'p2a';
                 }
- 
+
                 if (!p2SlotTrigger) continue;
- 
+
                 const p2Slot = p2SlotTrigger;
+
                 const enemySpecies = p2SlotSpecies[p2Slot] ?? '';
                 const enemyLevel = p2SlotLevel[p2Slot] ?? botLevel(floor);
- 
+
                 const lastMoveWasSelfKO = SELF_KO_MOVES.has(lastMoveName) && lastMoveUser.startsWith('p2');
                 const lastMoveWasP1Direct = lastMoveUser.startsWith('p1') && lastMoveTarget === p2Slot;
- 
+
                 let killerTeamIdx: number | undefined;
                 if (lastMoveWasP1Direct && !lastMoveWasSelfKO) {
                         killerTeamIdx = p1SlotToTeamIdx[lastMoveUser];
@@ -293,8 +289,8 @@ function parseKillExp(
                                                 if (weatherSetByP1[wKey]) {
                                                         const fallbackSlot = lastAttackerSlot[p2Slot] ?? lastAnyP1Slot;
                                                         killerTeamIdx = fallbackSlot ? p1SlotToTeamIdx[fallbackSlot] : undefined;
-																}
-														 } else if (/^(?:recoil|Life Orb|Black Sludge|crash)$/i.test(fromTag) || RESIDUAL_FROM_TAGS[fromTag]) {
+                                                }
+                                        } else if (/^(?:recoil|Life Orb|Black Sludge|crash)$/i.test(fromTag) || RESIDUAL_FROM_TAGS[fromTag]) {
                                                 const fallbackSlot = lastAttackerSlot[p2Slot] ?? lastAnyP1Slot;
                                                 killerTeamIdx = fallbackSlot ? p1SlotToTeamIdx[fallbackSlot] : undefined;
                                         }
@@ -305,20 +301,21 @@ function parseKillExp(
                                 }
                         }
                 }
- 
+
                 const participants = new Set(participatedAgainst[p2Slot] ?? []);
                 if (killerTeamIdx !== undefined) participants.add(killerTeamIdx);
                 for (const idx of p1TeamFainted) participants.delete(idx);
                 if (!participants.size) continue;
- 
-                // Compute raw kill exp (pre-split, pre-Lucky Egg) for Exp. All share base
+
+                // Compute raw kill exp (pre-split, pre-Lucky Egg, pre-Exp. Charm)
+                // used as the base for Exp. All share calculation
                 const b = getExpYield(enemySpecies);
                 const L = enemyLevel;
                 const a = (isBossFloor || isTrainerFloor) ? 1.5 : 1;
                 const rawKillExp = Math.floor(Math.floor((b * L) / 5 + 1) * a);
                 const basePerParticipant = Math.max(1, Math.floor(rawKillExp / participants.size));
- 
-                // Direct participants: calc exp with Lucky Egg, without Exp. Charm
+
+                // Direct participants: apply Lucky Egg per-mon, Exp. Charm handled later in applyExpShare
                 for (const teamIdx of participants) {
                         const mon = state.team[teamIdx];
                         if (!mon) continue;
@@ -326,15 +323,15 @@ function parseKillExp(
                         const exp = calcKillExp(enemySpecies, enemyLevel, participants.size, isBossFloor, hasLuckyEgg, isTrainerFloor);
                         expMap.set(teamIdx, (expMap.get(teamIdx) ?? 0) + exp);
                 }
- 
-                // Benched alive mons accumulate the base-per-participant for Exp. All calculation
+
+                // Benched alive mons accumulate basePerParticipant for Exp. All share
                 for (let i = 0; i < state.team.length; i++) {
                         if (participants.has(i) || p1TeamFainted.has(i)) continue;
                         if ((state.team[i].currentHp ?? 100) <= 0) continue;
                         baseShareExpMap.set(i, (baseShareExpMap.get(i) ?? 0) + basePerParticipant);
                 }
         }
- 
+
         return { expMap, baseShareExpMap };
 }
 
