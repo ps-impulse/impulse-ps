@@ -641,7 +641,7 @@ exports.grouplist = [
 		tournaments: true,
 	},
 	{
-		symbol: '𝓕',
+		symbol: 'F',
 		id: "founder",
 		name: "Room Founder",
 		inherit: '@',
@@ -679,7 +679,7 @@ exports.grouplist = [
 		tournaments: true,
 	},
 	{
-		symbol: '𞋎',
+		symbol: 'L',
 		id: "leader",
 		name: "Room Leader",
 		inherit: '@',
@@ -729,7 +729,7 @@ exports.grouplist = [
 		game: true,
 	},
 	{
-		symbol: '𝓞',
+		symbol: 'O',
 		id: "operator",
 		name: "Room Operator",
 		inherit: '%',
