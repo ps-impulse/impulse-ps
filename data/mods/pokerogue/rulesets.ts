@@ -265,33 +265,36 @@ export const Rulesets: {[k: string]: FormatData} = {
 		desc: 'Tracks participation natively and outputs exact EXP yields on faint.',
 
 		onStart() {
-			if (!this.battle.m.p1Participants) {
-				this.battle.m.p1Participants = new Set<string>();
+			// 'this' is the Battle object. We safely attach our tracker directly to it.
+			if (!(this as any).p1Participants) {
+				(this as any).p1Participants = new Set<string>();
 			}
 		},
 
 		onSwitchIn(pokemon) {
 			if (pokemon.side.id === 'p1') {
-				if (!this.battle.m.p1Participants) {
-					this.battle.m.p1Participants = new Set<string>();
+				if (!(this as any).p1Participants) {
+					(this as any).p1Participants = new Set<string>();
 				}
 				// Add the base species ID to the participant tracker
-				this.battle.m.p1Participants.add(pokemon.species.id);
+				(this as any).p1Participants.add(pokemon.species.id);
 			}
 		},
 
 		onFaint(pokemon) {
 			// When an ENEMY faints, output the data we need for backend EXP math
 			if (pokemon.side.id === 'p2') {
-				const participants = Array.from(this.battle.m.p1Participants || []).join(',');
+				const participants = Array.from((this as any).p1Participants || []).join(',');
 				const species = pokemon.species.id;
 				const level = pokemon.level;
 				
 				// Output a clean, easy-to-parse message to the battle log
 				this.add('-message', `PR_EXP|${species}|${level}|${participants}`);
 				
-				// Clear the participants for the next opponent in multi-battles
-				this.battle.m.p1Participants.clear();
+				// Clear the participants for the next opponent
+				if ((this as any).p1Participants) {
+					(this as any).p1Participants.clear();
+				}
 			}
 		}
 	},
