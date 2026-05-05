@@ -106,21 +106,25 @@ export function calcKillExp(
         hasLuckyEgg = false,
         isTrainer = false
 ): number {
-        // Official formula: expValue = floor((baseExp * level) / 5 + 1)
-        // Trainer/boss battles multiply by 1.5
-        // Split by participant count
-        // Lucky Egg (held item): +40% per stack — applied per-pokemon before Exp. Charm
-        // Exp. Charm (key item): applied globally AFTER, to all mons including benched — handled in applyExpShare
+        // Official formula: expValue = (baseExp * level) / 5 + 1
+        // Trainer/Boss battles multiply by 1.5
+        // Then split by participant count
+        // Exp. Charm is handled globally downstream in applyExpShare
         const b = getExpYield(enemySpeciesId);
         const L = enemyLevel;
         const s = Math.max(1, participantsCount);
+
         const a = (isBossFloor || isTrainer) ? 1.5 : 1;
- 
+
         let expValue = Math.floor((b * L) / 5 + 1);
         expValue = Math.floor(expValue * a);
         expValue = Math.floor(expValue / s);
-        if (hasLuckyEgg) expValue = Math.floor(expValue * 1.4);
- 
+
+        // Apply Lucky Egg directly to the participant
+        if (hasLuckyEgg) {
+                expValue = Math.floor(expValue * 1.5);
+        }
+
         return Math.max(1, expValue);
 }
 
