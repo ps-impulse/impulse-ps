@@ -103,230 +103,52 @@ function parseKillExp(
         floor: number,
         isBossFloor: boolean,
 ): { expMap: Map<number, number>, baseShareExpMap: Map<number, number> } {
-        const p1SlotToTeamIdx: Record<string, number> = {};
-        const p1TeamFainted = new Set<number>();
-        const p2SlotSpecies: Record<string, string> = {};
-        const p2SlotLevel: Record<string, number> = {};
-
-        const participatedAgainst: Record<string, Set<number>> = {};
-        const lastAttackerSlot: Record<string, string> = {};
-        const statusInflicter: Record<string, number> = {};
-        const residualInflicter: Record<string, number> = {};
-        const hazardSetter: Record<string, number> = {};
-        const weatherSetByP1: Record<string, boolean> = {};
-
-        let lastAnyP1Slot: string | undefined;
-        let lastMoveUser = '';
-        let lastMoveTarget = '';
-        let lastMoveName = '';
-
         const expMap = new Map<number, number>();
         const baseShareExpMap = new Map<number, number>();
-
         const isTrainerFloor = !!TRAINERS[floor.toString()];
 
         for (const line of logLines) {
-                const p1Switch = /^\|(?:switch|drag)\|p1([a-z]): [^|]+\|([^|,]+)[^|]*\|(\d+)/.exec(line);
-                if (p1Switch) {
-                        const slot = 'p1' + p1Switch[1];
-                        const sid = toID(p1Switch[2].trim());
-                        const otherActive = new Set(
-                                Object.entries(p1SlotToTeamIdx)
-                                        .filter(([s]) => s !== slot)
-                                        .map(([, i]) => i)
-                        );
-                        let matched = -1;
-                        for (let i = 0; i < state.team.length; i++) {
-                                if (toID(state.team[i].species) === sid && !otherActive.has(i)) {
-                                        matched = i;
-                                        break;
-                                }
-                        }
-                        if (matched !== -1) {
-                                p1SlotToTeamIdx[slot] = matched;
-                                for (const p2Slot of Object.keys(p2SlotSpecies)) {
-                                        if (!participatedAgainst[p2Slot]) participatedAgainst[p2Slot] = new Set();
-                                        participatedAgainst[p2Slot].add(matched);
-                                }
-                        }
-                        lastAnyP1Slot = slot;
-                        continue;
+                // Ignore everything except our custom hook output
+                if (!line.includes('PR_EXP|')) continue;
+
+                const parts = line.split('|');
+                // Find where our data starts (to account for |-message| prefixes)
+                const dataIndex = parts.indexOf('PR_EXP') + 1;
+                const enemySpecies = parts[dataIndex];
+                const enemyLevel = parseInt(parts[dataIndex + 1]);
+                
+                // If there were no participants (edge case), default to an empty array
+                const participantSpeciesIds = parts[dataIndex + 2] ? parts[dataIndex + 2].split(',') : [];
+
+                const participantIndices = new Set<number>();
+                for (const sid of participantSpeciesIds) {
+                        const idx = state.team.findIndex(m => toID(m.species) === sid && (m.currentHp ?? 100) > 0);
+                        if (idx !== -1) participantIndices.add(idx);
                 }
 
-                const p1Faint = /^\|faint\|p1([a-z]):/.exec(line);
-                if (p1Faint) {
-                        const idx = p1SlotToTeamIdx['p1' + p1Faint[1]];
-                        if (idx !== undefined) p1TeamFainted.add(idx);
-                        continue;
+                // If both fainted turn 1, fallback to slot 0 so exp isn't entirely lost
+                if (participantIndices.size === 0 && state.team.length > 0) {
+                        participantIndices.add(0); 
                 }
 
-                const p2Switch = /^\|(?:switch|drag)\|p2([a-z]): [^|]+\|([^|,]+)(?:, L(\d+))?[^|]*\|/.exec(line);
-                if (p2Switch) {
-                        const slot = 'p2' + p2Switch[1];
-                        p2SlotSpecies[slot] = toID(p2Switch[2].trim());
-                        p2SlotLevel[slot] = p2Switch[3] ? parseInt(p2Switch[3]) : botLevel(floor);
-                        participatedAgainst[slot] = new Set();
-                        for (const teamIdx of Object.values(p1SlotToTeamIdx)) {
-                                participatedAgainst[slot].add(teamIdx);
-                        }
-                        delete lastAttackerSlot[slot];
-                        delete statusInflicter[slot];
-                        for (const key of Object.keys(residualInflicter)) {
-                                if (key.startsWith(`${slot}:`)) delete residualInflicter[key];
-                        }
-                        continue;
-                }
-
-                const moveMatch = /^\|move\|([p][12][a-z]): [^|]+\|([^|]+)\|([p][12][a-z]):/.exec(line);
-                if (moveMatch) {
-                        const user = moveMatch[1];
-                        const move = toID(moveMatch[2]);
-                        const target = moveMatch[3];
-                        lastMoveName = move;
-                        lastMoveUser = user;
-                        lastMoveTarget = target;
-
-                        if (user.startsWith('p1')) {
-                                lastAnyP1Slot = user;
-                                if (target.startsWith('p2')) {
-                                        lastAttackerSlot[target] = user;
-                                        const HAZARD_MOVES: Record<string, string> = {
-                                                stealthrock: 'stealthrock', spikes: 'spikes',
-                                                toxicspikes: 'toxicspikes', stickyweb: 'stickyweb',
-                                                stoneaxe: 'stealthrock', ceaselessedge: 'spikes',
-                                        };
-                                        if (HAZARD_MOVES[move]) {
-                                                const teamIdx = p1SlotToTeamIdx[user];
-                                                if (teamIdx !== undefined) hazardSetter[HAZARD_MOVES[move]] = teamIdx;
-                                        }
-                                        if (move === 'futuresight' || move === 'doomdesire') {
-                                                const teamIdx = p1SlotToTeamIdx[user];
-                                                if (teamIdx !== undefined) residualInflicter[`${target}:${move}`] = teamIdx;
-                                        }
-                                }
-                                const WEATHER_MOVES: Record<string, string> = {
-                                        raindance: 'rain', sunnyday: 'sun', sandstorm: 'sand',
-                                        snowscape: 'snow', hail: 'hail', chillyreception: 'snow',
-                                };
-                                if (WEATHER_MOVES[move]) weatherSetByP1[WEATHER_MOVES[move]] = true;
-                        } else {
-                                const WEATHER_MOVES: Record<string, string> = {
-                                        raindance: 'rain', sunnyday: 'sun', sandstorm: 'sand',
-                                        snowscape: 'snow', hail: 'hail', chillyreception: 'snow',
-                                };
-                                if (WEATHER_MOVES[move]) weatherSetByP1[WEATHER_MOVES[move]] = false;
-                        }
-                        continue;
-                }
-
-                const statusApply = /^\|-status\|p2([a-z]): [^|]+\|(brn|psn|tox)/.exec(line);
-                if (statusApply) {
-                        const p2Slot = 'p2' + statusApply[1];
-                        if (lastMoveUser.startsWith('p1')) {
-                                const src = (lastMoveTarget === p2Slot ? lastMoveUser : lastAttackerSlot[p2Slot]) ?? lastMoveUser;
-                                const teamIdx = p1SlotToTeamIdx[src];
-                                if (teamIdx !== undefined) statusInflicter[p2Slot] = teamIdx;
-                        }
-                        continue;
-                }
-
-                const residualStart = /^\|-start\|p2([a-z]): [^|]+\|(?:move: )?([^|[]+)/.exec(line);
-                if (residualStart) {
-                        const p2Slot = 'p2' + residualStart[1];
-                        const effectKey = residualStart[2].trim().replace(/^move: /, '');
-                        if (RESIDUAL_FROM_TAGS[effectKey] && lastMoveUser.startsWith('p1')) {
-                                const teamIdx = p1SlotToTeamIdx[lastMoveUser];
-                                if (teamIdx !== undefined) residualInflicter[`${p2Slot}:${toID(effectKey)}`] = teamIdx;
-                        }
-                        continue;
-                }
-
-                let p2SlotTrigger = '';
-                const faintLine = /^\|faint\|p2([a-z]):/.exec(line);
-                if (faintLine) {
-                        p2SlotTrigger = 'p2' + faintLine[1];
-                } else if (line.startsWith('|c|~|Gotcha!')) {
-                        p2SlotTrigger = 'p2a';
-                }
-
-                if (!p2SlotTrigger) continue;
-
-                const p2Slot = p2SlotTrigger;
-
-                const enemySpecies = p2SlotSpecies[p2Slot] ?? '';
-                const enemyLevel = p2SlotLevel[p2Slot] ?? botLevel(floor);
-
-                const lastMoveWasSelfKO = SELF_KO_MOVES.has(lastMoveName) && lastMoveUser.startsWith('p2');
-                const lastMoveWasP1Direct = lastMoveUser.startsWith('p1') && lastMoveTarget === p2Slot;
-
-                let killerTeamIdx: number | undefined;
-                if (lastMoveWasP1Direct && !lastMoveWasSelfKO) {
-                        killerTeamIdx = p1SlotToTeamIdx[lastMoveUser];
-                } else if (lastMoveWasSelfKO) {
-                        const fallbackSlot = lastAttackerSlot[p2Slot] ?? lastAnyP1Slot;
-                        killerTeamIdx = fallbackSlot ? p1SlotToTeamIdx[fallbackSlot] : undefined;
-                } else if (statusInflicter[p2Slot] !== undefined) {
-                        killerTeamIdx = statusInflicter[p2Slot];
-                } else {
-                        const residualKey = Object.keys(residualInflicter).find(k => k.startsWith(`${p2Slot}:`));
-                        if (residualKey) {
-                                killerTeamIdx = residualInflicter[residualKey];
-                        } else {
-                                const faintIdx = logLines.indexOf(line);
-                                let fromTag = '';
-                                for (let j = faintIdx - 1; j >= Math.max(0, faintIdx - 8); j--) {
-                                        const dl = logLines[j];
-                                        if (!dl.startsWith(`|-damage|p2${p2Slot.replace('p2', '')}`)) continue;
-                                        const fromMatch = /\[from\] (?:\[of\] [^|]+\|)?(.+)$/.exec(dl);
-                                        if (fromMatch) { fromTag = fromMatch[1].trim(); break; }
-                                }
-                                if (fromTag) {
-                                        const hazardMatch = /^(?:Stealth Rock|Spikes|Toxic Spikes|Sticky Web)$/.exec(fromTag);
-                                        if (hazardMatch) {
-                                                killerTeamIdx = hazardSetter[toID(hazardMatch[0])];
-                                        } else if (/^(?:Sandstorm|Hail|Snow)$/.test(fromTag)) {
-                                                const wKey = fromTag.toLowerCase();
-                                                if (weatherSetByP1[wKey]) {
-                                                        const fallbackSlot = lastAttackerSlot[p2Slot] ?? lastAnyP1Slot;
-                                                        killerTeamIdx = fallbackSlot ? p1SlotToTeamIdx[fallbackSlot] : undefined;
-                                                }
-                                        } else if (/^(?:recoil|Life Orb|Black Sludge|crash)$/i.test(fromTag) || RESIDUAL_FROM_TAGS[fromTag]) {
-                                                const fallbackSlot = lastAttackerSlot[p2Slot] ?? lastAnyP1Slot;
-                                                killerTeamIdx = fallbackSlot ? p1SlotToTeamIdx[fallbackSlot] : undefined;
-                                        }
-                                }
-                                if (killerTeamIdx === undefined) {
-                                        const fallbackSlot = lastAttackerSlot[p2Slot] ?? lastAnyP1Slot;
-                                        killerTeamIdx = fallbackSlot ? p1SlotToTeamIdx[fallbackSlot] : undefined;
-                                }
-                        }
-                }
-
-                const participants = new Set(participatedAgainst[p2Slot] ?? []);
-                if (killerTeamIdx !== undefined) participants.add(killerTeamIdx);
-                for (const idx of p1TeamFainted) participants.delete(idx);
-                if (!participants.size) continue;
-
-                // Compute raw kill exp (pre-split, pre-Lucky Egg, pre-Exp. Charm)
-                // used as the base for Exp. All share calculation
+                const validParticipantCount = Math.max(1, participantIndices.size);
                 const b = getExpYield(enemySpecies);
-                const L = enemyLevel;
                 const a = (isBossFloor || isTrainerFloor) ? 1.5 : 1;
-                const rawKillExp = Math.floor(Math.floor((b * L) / 5 + 1) * a);
-                const basePerParticipant = Math.max(1, Math.floor(rawKillExp / participants.size));
+                const rawKillExp = Math.floor(Math.floor((b * enemyLevel) / 5 + 1) * a);
+                const basePerParticipant = Math.max(1, Math.floor(rawKillExp / validParticipantCount));
 
-                // Direct participants: apply Lucky Egg per-mon, Exp. Charm handled later in applyExpShare
-                for (const teamIdx of participants) {
+                // 1. Calculate for Direct Participants
+                for (const teamIdx of participantIndices) {
                         const mon = state.team[teamIdx];
                         if (!mon) continue;
                         const hasLuckyEgg = mon.heldItem === 'luckyegg';
-                        const exp = calcKillExp(enemySpecies, enemyLevel, participants.size, isBossFloor, hasLuckyEgg, isTrainerFloor);
+                        const exp = calcKillExp(enemySpecies, enemyLevel, validParticipantCount, isBossFloor, hasLuckyEgg, isTrainerFloor);
                         expMap.set(teamIdx, (expMap.get(teamIdx) ?? 0) + exp);
                 }
 
-                // Benched alive mons accumulate basePerParticipant for Exp. All share
+                // 2. Accumulate Base Share for the Bench (Exp. All)
                 for (let i = 0; i < state.team.length; i++) {
-                        if (participants.has(i) || p1TeamFainted.has(i)) continue;
+                        if (participantIndices.has(i)) continue;
                         if ((state.team[i].currentHp ?? 100) <= 0) continue;
                         baseShareExpMap.set(i, (baseShareExpMap.get(i) ?? 0) + basePerParticipant);
                 }
