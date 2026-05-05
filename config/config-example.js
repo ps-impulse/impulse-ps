@@ -79,8 +79,8 @@ exports.wsdeflate = {
 exports.ssl = {
 	port: 443,
 	options: {
-		key: 'home/ubuntu/impulse-ps/privkey.pem',
-		cert: 'home/ubuntu/impulse-ps/fullchain.pem',
+		key: '/home/ubuntu/impulse-ps/privkey.pem',
+		cert: '/home/ubuntu/impulse-ps/fullchain.pem',
 	},
 };
 
