@@ -9,9 +9,9 @@ export const Rulesets: {[k: string]: FormatData} = {
 				if (pokemon.side.pokemon.length !== 1) return;
 				if (pokemon.volatiles['bossshield']) return;
 
-				// ETERNATUS PHASE 1
+				// --- HARDCODE ETERNATUS PHASE 1 ---
 				if (pokemon.species.id === 'eternatus') {
-					pokemon.level = 200;
+					pokemon.level = 200; // Force Level 200
 					
 					// Force canonical PokéRogue Phase 1 Moveset
 					const phase1Moves = ['dynamaxcannon', 'sludgebomb', 'flamethrower', 'cosmicpower'];
@@ -77,7 +77,7 @@ export const Rulesets: {[k: string]: FormatData} = {
 
 			if (move.ohko) {
 				move.ohko = false;
-				move.basePower = 200;
+				move.basePower = 200; // Accurately reflects PokéRogue's 200 BP override
 				move.accuracy = 100;
 				this.add('-message', `OHKO moves deal 200 fixed BP damage against boss Pokémon!`);
 			}
@@ -94,12 +94,13 @@ export const Rulesets: {[k: string]: FormatData} = {
 				if (pokemon.side.pokemon.length !== 1) return;
 				if (pokemon.volatiles['bossshield']) return;
 
-				// THE WAVE & CHECK FOR BOSS
+				// --- 1. REVERSE-ENGINEER THE WAVE & CHECK FOR BOSS ---
 				let estimatedWave = 1;
 				let isBossWave = false;
 				const L = pokemon.level;
 				
 				if (L > 5) {
+					// Reverse PokéRogue's quadratic formula
 					const Y = (L - 2) / 1.2 - 1;
 					const exactWave = (-312.5 + Math.sqrt(97656.25 + 2500 * Y)) / 2;
 					
@@ -116,7 +117,7 @@ export const Rulesets: {[k: string]: FormatData} = {
 
 				this.add('-message', `[System] Level ${L} recognized as Wave Bracket ${estimatedWave}. Boss Encounter: ${isBossWave}`);
 
-				// ENDLESS TOKENS SETUP
+				// --- 2. ENDLESS TOKENS SETUP ---
 				// Enemies gain tokens every 50 waves. 
 				const tokenStacks = Math.floor(estimatedWave / 50);
 				if (tokenStacks > 0) {
@@ -129,7 +130,7 @@ export const Rulesets: {[k: string]: FormatData} = {
 					this.add('-message', `[Endless Mode] Enemy has ${tokenStacks}x Token Stacks applied!`);
 				}
 
-				// ETERNATUS 250-WAVE LOOP
+				// --- 3. ETERNATUS 250-WAVE LOOP ---
 				// Only triggers if it's the exact Boss Wave AND a multiple of 250
 				const isEternatusWave = isBossWave && estimatedWave > 0 && estimatedWave % 250 === 0;
 				
@@ -160,7 +161,7 @@ export const Rulesets: {[k: string]: FormatData} = {
 					this.add('-message', `Eternatus radiates an overwhelming, otherworldly aura!`);
 				}
 
-				// ENDLESS BOSS SHIELDS
+				// --- 4. ENDLESS BOSS SHIELDS ---
 				// Endless bosses get 4 shields. Major Legendaries (BST >= 670) get 5.
 				let shields = 0; 
 				if (isBossWave) {
@@ -180,7 +181,7 @@ export const Rulesets: {[k: string]: FormatData} = {
 			}
 		},
 
-		// ENDLESS TOKEN: DAMAGE & PROTECTION MODIFIERS
+		// --- ENDLESS TOKEN: DAMAGE & PROTECTION MODIFIERS ---
 		onBasePowerPriority: 20,
 		onBasePower(basePower, attacker, defender, move) {
 			// Protection Token: Reduces damage taken by the P2 enemy (2.5% per stack)
@@ -200,14 +201,13 @@ export const Rulesets: {[k: string]: FormatData} = {
 			}
 		},
 
-		// ENDLESS TOKEN: ENDURE
+		// --- ENDLESS TOKEN: ENDURE ---
 		onDamage(damage, target, source, effect) {
 			if (target.side.id === 'p2' && target.m.endureTokens && damage >= target.hp && effect && effect.effectType === 'Move') {
 				if (effect.ohko) return damage;
 
 				const tokens = Math.min(target.m.endureTokens, 50);
-        // 2% per stack
-				const endureChance = tokens * 2;
+				const endureChance = tokens * 2; // 2% per stack
 
 				if (this.randomChance(endureChance, 100)) {
 					this.add('-message', `The wild ${target.name} endured the hit due to its Endure Tokens!`);
@@ -217,7 +217,7 @@ export const Rulesets: {[k: string]: FormatData} = {
 			return damage;
 		},
 
-		// ENDLESS TOKEN: RECOVERY & FULL HEAL
+		// --- ENDLESS TOKEN: RECOVERY & FULL HEAL ---
 		onResidualOrder: 5,
 		onResidual(pokemon) {
 			if (pokemon.side.id !== 'p2') return;
@@ -225,8 +225,7 @@ export const Rulesets: {[k: string]: FormatData} = {
 			// Recovery Token: Heals 2% max HP per stack at the end of the turn
 			if (pokemon.m.recoveryTokens) {
 				const tokens = Math.min(pokemon.m.recoveryTokens, 10);
-        // 2% per stack
-				const healPercent = tokens * 0.02;
+				const healPercent = tokens * 0.02; // 2% per stack, up to 20%
 				
 				if (pokemon.hp < pokemon.maxhp) {
 					this.heal(pokemon.maxhp * healPercent);
@@ -237,8 +236,7 @@ export const Rulesets: {[k: string]: FormatData} = {
 			// Full Heal Token: 2.5% chance per stack to cure status
 			if (pokemon.m.fullHealTokens && pokemon.status) {
 				const tokens = Math.min(pokemon.m.fullHealTokens, 10);
-        // 2.5% per stack, up to 25%
-				const cureChance = tokens * 2.5;
+				const cureChance = tokens * 2.5; // 2.5% per stack, up to 25%
 
 				if (this.randomChance(cureChance, 100)) {
 					pokemon.cureStatus();
@@ -259,5 +257,42 @@ export const Rulesets: {[k: string]: FormatData} = {
 				this.add('-message', `OHKO moves deal 200 fixed BP damage against boss Pokémon!`);
 			}
 		},
+	},
+
+	pokerogueexp: {
+		effectType: 'Rule',
+		name: 'PokeRogue EXP Tracker',
+		desc: 'Tracks participation natively and outputs exact EXP yields on faint.',
+
+		onStart() {
+			if (!this.battle.m.p1Participants) {
+				this.battle.m.p1Participants = new Set<string>();
+			}
+		},
+
+		onSwitchIn(pokemon) {
+			if (pokemon.side.id === 'p1') {
+				if (!this.battle.m.p1Participants) {
+					this.battle.m.p1Participants = new Set<string>();
+				}
+				// Add the base species ID to the participant tracker
+				this.battle.m.p1Participants.add(pokemon.species.id);
+			}
+		},
+
+		onFaint(pokemon) {
+			// When an ENEMY faints, output the data we need for backend EXP math
+			if (pokemon.side.id === 'p2') {
+				const participants = Array.from(this.battle.m.p1Participants || []).join(',');
+				const species = pokemon.species.id;
+				const level = pokemon.level;
+				
+				// Output a clean, easy-to-parse message to the battle log
+				this.add('-message', `PR_EXP|${species}|${level}|${participants}`);
+				
+				// Clear the participants for the next opponent in multi-battles
+				this.battle.m.p1Participants.clear();
+			}
+		}
 	},
 };
