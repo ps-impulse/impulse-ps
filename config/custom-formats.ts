@@ -1,6 +1,6 @@
 export const Formats: FormatList = [
 	{
-		section: "S/V Singles",
+		section: "PokèRogue Mod",
 	},
 	{
 		name: "[Gen 9] PokeRogue",
