@@ -259,7 +259,7 @@ export const Rulesets: {[k: string]: FormatData} = {
 		},
 	},
 
-	pokerogueexp: {
+	pokerogueexptracker: {
 		effectType: 'Rule',
 		name: 'PokeRogue EXP Tracker',
 		desc: 'Tracks participation natively and outputs exact EXP yields on faint.',
