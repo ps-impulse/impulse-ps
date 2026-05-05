@@ -744,7 +744,7 @@ export const commands: Chat.ChatCommands = {
                         refreshGamePage(user);
                 },
 
-                catch(target, room, user) {
+			       catch(target, room, user) {
                         const state = getState(user.id);
                         if (!state || state.gameOver) return this.errorReply("No active run.");
                         if (!room?.battle) return this.errorReply("You must be in a battle to catch Pokémon.");
@@ -888,6 +888,16 @@ export const commands: Chat.ChatCommands = {
                         if (shakes === 3) {
                                 const dexSp = Dex.species.get(p2Species);
                                 room.add(`|c|~|Gotcha! ${dexSp.name} was caught!`).update();
+
+                                // --- FIX: MANUALLY EMIT EXP HOOK FOR CATCHING ---
+                                if (room.battle && (room.battle as any).p1Participants) {
+                                        const participants = Array.from((room.battle as any).p1Participants || []).join(',');
+                                        // Inject the exact same message the onFaint hook would use
+                                        room.add(`|-message|PR_EXP|${p2Species}|${p2Level}|${participants}`).update();
+                                        // Clear participants just in case
+                                        (room.battle as any).p1Participants.clear();
+                                }
+                                // ------------------------------------------------
 
                                 const moves = getLevelUpMoves(p2Species, p2Level);
 
