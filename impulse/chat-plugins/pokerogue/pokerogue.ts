@@ -8,7 +8,7 @@ import {
         expForLevel,
         applyExpAndLevelUp, getLevelUpEvo,
         getLevelUpMoves, getMovesLearnedBetween,
-        calcKillExp, getExpType, botLevel,
+        calcKillExp, getExpType, getExpYield, botLevel,
         packTeam, TRAINERS,
 } from './pokemon';
 import { renderGamePage, refreshGamePage } from './render';
