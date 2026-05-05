@@ -125,6 +125,23 @@ const SOUNDPROOF_MOVES = new Set([
 	'sing', 'snarl', 'snore', 'sparklingsurge', 'supersonic', 'uproar',
 ]);
 
+// --- NEW GLOBAL HELPER FUNCTION ---
+function getTypeMultiplier(atkType: string, defTypes: string[]): number {
+	let multiplier = 1;
+	for (const defType of defTypes) {
+		// 1. Check absolute immunities first (e.g., Normal vs Ghost)
+		if (!Dex.getImmunity(atkType, defType)) {
+			return 0;
+		}
+		// 2. Translate Showdown's scale (-1, 0, 1) into real math (0.5x, 1x, 2x)
+		const eff = Dex.getEffectiveness(atkType, defType);
+		if (eff === 1) multiplier *= 2;
+		else if (eff === -1) multiplier *= 0.5;
+	}
+	return multiplier;
+}
+// ----------------------------------
+
 function getMoveEffectiveness(
 	moveData: any,
 	targetDex: any,
@@ -135,27 +152,17 @@ function getMoveEffectiveness(
 
 	// wonder guard: only super-effective hits
 	if (targetAbility === 'wonderguard') {
-		let eff = 1;
-		for (const defType of targetDex.types) {
-			eff *= Dex.getEffectiveness(moveType, defType);
-		}
+		const eff = getTypeMultiplier(moveType, targetDex.types);
 		return eff > 1 ? eff : 0;
 	}
 
 	if (targetAbility === 'bulletproof' && BULLETPROOF_MOVES.has(moveId)) return 0;
-
 	if (targetAbility === 'soundproof' && SOUNDPROOF_MOVES.has(moveId)) return 0;
 
-	
 	const immuneTypes = ABILITY_IMMUNITIES[targetAbility];
 	if (immuneTypes && immuneTypes.includes(moveType)) return 0;
 
-	
-	let effectiveness = 1;
-	for (const defType of targetDex.types) {
-		effectiveness *= Dex.getEffectiveness(moveType, defType);
-	}
-	return effectiveness;
+	return getTypeMultiplier(moveType, targetDex.types);
 }
 
 function getStatCategoryModifier(moveData: any, pokemon: any): number {
@@ -177,10 +184,7 @@ function getDefensiveScore(switchInSpecies: string, oppMoveTypes: string[]): num
 	if (!dex.exists) return 0;
 	let score = 0;
 	for (const atkType of oppMoveTypes) {
-		let eff = 1;
-		for (const defType of dex.types) {
-			eff *= Dex.getEffectiveness(atkType, defType);
-		}
+		const eff = getTypeMultiplier(atkType, dex.types);
 		if (eff === 0) score += 3;
 		else if (eff < 1) score += 1;
 		else if (eff > 1) score -= 1.5;
@@ -231,22 +235,18 @@ function scoreMove(
 
 	let score = basePower;
 
-	
 	score *= effectiveness;
 
 	// super-effective bonus / resisted penalty
 	if (effectiveness > 1) score *= 1.2;
 	else if (effectiveness < 1) score *= 0.7;
 
-	
 	if (userDex.exists && userDex.types.includes(moveData.type)) {
 		score *= 1.5;
 	}
 
-	
 	score *= getStatCategoryModifier(moveData, userPokemon);
 
-	
 	const acc = moveData.accuracy;
 	if (typeof acc === 'number') {
 		score *= acc / 100;
@@ -386,10 +386,7 @@ function shouldSwitch(
 	let worstIncomingEff = 1;
 	if (targetDex.exists && userDex.exists) {
 		for (const atkType of targetDex.types) {
-			let eff = 1;
-			for (const defType of userDex.types) {
-				eff *= Dex.getEffectiveness(atkType, defType);
-			}
+			const eff = getTypeMultiplier(atkType, userDex.types);
 			if (eff > worstIncomingEff) worstIncomingEff = eff;
 		}
 	}
@@ -427,10 +424,7 @@ function shouldSwitch(
 		// Offensive score vs opponent
 		if (benchDex.exists && targetDex.exists) {
 			for (const atkType of benchDex.types) {
-				let eff = 1;
-				for (const defType of targetDex.types) {
-					eff *= Dex.getEffectiveness(atkType, defType);
-				}
+				const eff = getTypeMultiplier(atkType, targetDex.types);
 				if (eff > 1) score += eff * 2;
 			}
 		}
@@ -440,10 +434,7 @@ function shouldSwitch(
 		// Penalize switching into a bad matchup
 		if (targetDex.exists && benchDex.exists) {
 			for (const atkType of targetDex.types) {
-				let eff = 1;
-				for (const defType of benchDex.types) {
-					eff *= Dex.getEffectiveness(atkType, defType);
-				}
+				const eff = getTypeMultiplier(atkType, benchDex.types);
 				if (eff >= 2) score -= 3;
 				if (eff === 0) score += 2;
 			}
@@ -603,10 +594,7 @@ function makeAIChoice(requestJson: string, roomid: string, turn: number): string
 				let worstIncoming = 1;
 				if (targetDex.exists && userDex.exists) {
 					for (const atkType of targetDex.types) {
-						let eff = 1;
-						for (const defType of userDex.types) {
-							eff *= Dex.getEffectiveness(atkType, defType);
-						}
+						const eff = getTypeMultiplier(atkType, userDex.types);
 						if (eff > worstIncoming) worstIncoming = eff;
 					}
 				}
