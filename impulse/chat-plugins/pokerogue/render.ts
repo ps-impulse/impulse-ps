@@ -140,7 +140,7 @@ function renderHeader(view: string, hasGameOver: boolean): string {
         const titles: Record<string, string> = { main: 'PokéRogue', shop: 'Shop', bag: 'Bag', top: 'Ladder', resetconfirm: 'Reset run', guide: 'PokèRogue Guide' };
         let buf = `<div class="pr-header"><h2>${titles[view] ?? 'PokéRogue'}</h2>`;
         if (view === 'main' && !hasGameOver) {
-                buf += `<div style="display:flex;gap:4px;margin-left:auto">`;
+                buf += `<div style="display:flex;gap:8px;margin-left:auto">`;
                 buf += `${renderBtn('/pokerogue view guide', 'Guide', 'pr-btn', 'font-size:11px;padding:5px 10px')}`;
 			       buf += `&nbsp;&nbsp;&nbsp;`;
 			       buf += `${renderBtn('/pokerogue view top', 'Ladder', 'pr-btn', 'font-size:11px;padding:5px 10px')}`;
