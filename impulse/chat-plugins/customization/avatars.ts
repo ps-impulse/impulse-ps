@@ -34,7 +34,7 @@ const isValidImageSignature = (buffer: Uint8Array, ext: string) => {
 const displayAvatar = (filename: string) => {
 	// adding timestamp (v=Date.now()) is crucial here to force the browser to reload the image
 	// after we overwrote it, otherwise it shows the cached old version.
-	const url = `${CONFIG.baseUrl}${filename}?v=${Date.now()}`;
+	const url = `${CONFIG.baseUrl}${filename}`;
 	return `<img src='${url}' width='80' height='80'>`;
 };
 
