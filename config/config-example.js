@@ -27,8 +27,6 @@ exports.WhiteListed = ['princesky', 'turborx', 'musaddiktemkar'];
 
 exports.Server_Name = 'Impulse';
 
-exports.avatarUrl = 'impulse-ps.mooo.com/avatars/';
-
 exports.tournamentRewards = {
 	eligibleRooms: ['lobby', 'tournaments'],
 	rewards: [10, 5],
