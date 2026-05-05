@@ -889,15 +889,39 @@ export const commands: Chat.ChatCommands = {
                                 const dexSp = Dex.species.get(p2Species);
                                 room.add(`|c|~|Gotcha! ${dexSp.name} was caught!`).update();
 
-                                // --- FIX: MANUALLY EMIT EXP HOOK FOR CATCHING ---
-                                if (room.battle && (room.battle as any).p1Participants) {
-                                        const participants = Array.from((room.battle as any).p1Participants || []).join(',');
-                                        // Inject the exact same message the onFaint hook would use
-                                        room.add(`|-message|PR_EXP|${p2Species}|${p2Level}|${participants}`).update();
-                                        // Clear participants just in case
-                                        (room.battle as any).p1Participants.clear();
+                                // --- FIX: MANUALLY EXTRACT PARTICIPANTS FROM LOG AND EMIT EXP ---
+                                const p1Participants = new Set<string>();
+                                let p2SwitchIdx = 0;
+                                
+                                // 1. Find when the current wild Pokemon switched in
+                                for (let i = log.length - 1; i >= 0; i--) {
+                                        if (/^\|(?:switch|drag)\|p2[a-z]:/.test(log[i])) {
+                                                p2SwitchIdx = i;
+                                                break;
+                                        }
                                 }
-                                // ------------------------------------------------
+
+                                // 2. Find which of our Pokemon was already active when the wild Pokemon appeared
+                                for (let i = p2SwitchIdx; i >= 0; i--) {
+                                        const match = /^\|(?:switch|drag)\|p1[a-z]: [^|]+\|([^|,]+)/.exec(log[i]);
+                                        if (match) {
+                                                p1Participants.add(toID(match[1]));
+                                                break;
+                                        }
+                                }
+
+                                // 3. Add any of our Pokemon that switched in AFTER the wild Pokemon appeared
+                                for (let i = p2SwitchIdx; i < log.length; i++) {
+                                        const match = /^\|(?:switch|drag)\|p1[a-z]: [^|]+\|([^|,]+)/.exec(log[i]);
+                                        if (match) {
+                                                p1Participants.add(toID(match[1]));
+                                        }
+                                }
+
+                                // Inject the exact same message the onFaint hook would use!
+                                const participantsStr = Array.from(p1Participants).join(',');
+                                room.add(`|-message|PR_EXP|${p2Species}|${p2Level}|${participantsStr}`).update();
+                                // ----------------------------------------------------------------
 
                                 const moves = getLevelUpMoves(p2Species, p2Level);
 
