@@ -10,7 +10,7 @@ import { getClanContext, getClanById } from '../helpers/context';
 import { generateClanProfile } from '../helpers/html';
 import { refreshClanPage } from '../render';
 import { displayElo } from '../helpers/elo';
-import { Table } from '../../utils';
+import { Table } from '../../impulse-utils';
 import {
 	MAX_CLAN_DESC_LENGTH,
 	MAX_CLAN_TAG_LENGTH,
