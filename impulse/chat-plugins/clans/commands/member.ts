@@ -9,7 +9,7 @@ import { hasMinRole, log, to } from '../utils';
 import { getClanContext, getClanById, assertClanMember, assertNotOwner } from '../helpers/context';
 import { generateInvitePopup, generateAnnouncementPopup } from '../helpers/html';
 import { refreshClanPage } from '../render';
-import { Table } from '../../../impulse-utils';
+import { Table } from '../../utils';
 import { Utils } from '../../../../lib';
 
 const esc = (v: string | number | undefined | null) => Utils.escapeHTML(String(v ?? ''));

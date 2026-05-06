@@ -9,7 +9,8 @@ import { rankCommands } from './rank';
 import { clanInfoCommands } from './clan-info';
 import { adminCommands } from './admin';
 import { warCommands } from '../war/index';
-import { renderMainView, renderClanProfile, renderClanList, renderMembers } from '../render';
+import { renderClanPage, refreshClanPage } from '../render';
+import { setUIState, type ClanView } from '../state';
 import { Utils } from '../../../../lib';
 
 // ─── Help Lists ───────────────────────────────────────────────────────────────
@@ -89,7 +90,8 @@ function buildHelpHtml(
 	return html;
 }
 
-// ─── Help Lists ───────────────────────────────────────────────────────────────
+// ─── Exports ──────────────────────────────────────────────────────────────────
+
 export const commands: Chat.ChatCommands = {
 	clan: {
 		// ── Member Commands ──────────────────────────────────────────────────
@@ -122,8 +124,33 @@ export const commands: Chat.ChatCommands = {
 			this.sendReplyBox(html);
 		},
 
+		view(target, room, user) {
+			this.checkChat();
+			const [view, ...args] = target.split(' ');
+			const clanView = view as ClanView;
+
+			switch (clanView) {
+			case 'main':
+				setUIState(user.id, { view: 'main' });
+				break;
+			case 'profile':
+				setUIState(user.id, { view: 'profile', targetId: args[0] });
+				break;
+			case 'list':
+				setUIState(user.id, { view: 'list', page: parseInt(args[0]) || 1 });
+				break;
+			case 'members':
+				setUIState(user.id, { view: 'members', targetId: args[0] });
+				break;
+			default:
+				return this.errorReply(`Unknown view: ${view}`);
+			}
+
+			refreshClanPage(user);
+		},
+
 		'': function () {
-			return this.parse('/join view-clans-main');
+			return this.parse('/join view-clans');
 		},
 	},
 };
@@ -132,19 +159,6 @@ export const pages: Chat.PageTable = {
 	async clans(args, user) {
 		if (!user.named) return this.errorReply('Login required to view clans.');
 		this.title = `Clans`;
-		const view = args[0] || 'main';
-
-		switch (view) {
-		case 'main':
-			return await renderMainView(user);
-		case 'profile':
-			return await renderClanProfile(args[1], user, this.room!);
-		case 'list':
-			return await renderClanList(args[1]);
-		case 'members':
-			return await renderMembers(args[1], user, this.room!);
-		default:
-			return `<div class="pr"><div style="padding:14px">Unknown view: ${Utils.escapeHTML(view)}</div></div>`;
-		}
+		return await renderClanPage(user, this.room!);
 	},
 };
