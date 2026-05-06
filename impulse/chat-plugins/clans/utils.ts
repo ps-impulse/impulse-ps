@@ -293,7 +293,7 @@ export function assertNotOwner(
 type BroadcastMode = 'new' | 'change';
 
 export function broadcastToRoom(roomId: RoomID | ID, message: string): void {
-	const room = Rooms.get(roomId);
+	const room = Rooms.get(toID(clan.chatRoom) as RoomID);
 	if (room) room.add(message).update();
 }
 
@@ -303,7 +303,7 @@ export function broadcastUhtml(
 	html: string,
 	mode: BroadcastMode = 'change'
 ): void {
-	const room = Rooms.get(roomId);
+	const room = Rooms.get(toID(clan.chatRoom) as RoomID);
 	if (!room) return;
 	const tag = mode === 'new' ? 'uhtml' : 'uhtmlchange';
 	room.add(`|${tag}|${uhtmlId}|${html}`).update();
