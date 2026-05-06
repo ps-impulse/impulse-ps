@@ -1,17 +1,9 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans War Context Helper
- * @author PrinceSky-Git
- */
-
 import { Clans, ClanWars } from '../database';
 import type { ClanDoc } from '../database';
 import type { ClanWar } from '../interface';
 import { hasMinRole } from '../utils';
 import { getClanContext, getExistingWar } from '../helpers/context';
 import { MAX_BEST_OF, MIN_BEST_OF } from '../constants';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface WarCommandContext {
 	myClan: ClanDoc;
@@ -27,17 +19,6 @@ export interface FullWarContext extends WarCommandContext {
 	opponentClanId: ID;
 }
 
-// ─── War Permission Context ───────────────────────────────────────────────────
-
-/**
- * Fetches the user's clan and validates they have at least the Leader role
- * required to manage wars.
- * Sends an errorReply via the provided context if any step fails.
- *
- * @param userId  - The acting user's ID
- * @param context - The Chat.CommandContext to send error replies through
- * @returns A WarCommandContext or null if any check failed
- */
 export async function getWarPermissionContext(
 	userId: ID,
 	context: Chat.CommandContext
@@ -55,18 +36,6 @@ export async function getWarPermissionContext(
 	return { myClan: clan, myClanId: clanId };
 }
 
-// ─── Active War Fetch ─────────────────────────────────────────────────────────
-
-/**
- * Fetches an active war between two clans and resolves both clan documents.
- * Sends an errorReply via the provided context if any step fails.
- *
- * @param myClan         - The acting user's clan document
- * @param myClanId       - The acting user's clan ID
- * @param opponentClanId - The opponent clan ID
- * @param context        - The Chat.CommandContext to send error replies through
- * @returns A FullWarContext or null if any lookup failed
- */
 export async function getFullWarContext(
 	myClan: ClanDoc,
 	myClanId: ID,
@@ -113,16 +82,6 @@ export async function getFullWarContext(
 	};
 }
 
-// ─── Best Of Validation ───────────────────────────────────────────────────────
-
-/**
- * Validates a bestOf value for war creation or extension.
- * Sends an errorReply via the provided context if invalid.
- *
- * @param bestOf  - The bestOf value to validate
- * @param context - The Chat.CommandContext to send error replies through
- * @returns True if valid, false otherwise
- */
 export function validateBestOf(
 	bestOf: number,
 	context: Chat.CommandContext
@@ -142,17 +101,6 @@ export function validateBestOf(
 	return true;
 }
 
-// ─── Existing War Guards ──────────────────────────────────────────────────────
-
-/**
- * Checks that a clan is not already in a pending or active war.
- * Sends an errorReply via the provided context if they are.
- *
- * @param clanId   - The clan ID to check
- * @param clanName - The clan name for the error message
- * @param context  - The Chat.CommandContext to send error replies through
- * @returns True if the clan is free, false if already in a war
- */
 export async function assertNoExistingWar(
 	clanId: ID,
 	clanName: string,
@@ -172,16 +120,6 @@ export async function assertNoExistingWar(
 	return false;
 }
 
-// ─── War Paused Guard ─────────────────────────────────────────────────────────
-
-/**
- * Checks that a war is not paused before allowing battle-related actions.
- * Sends an errorReply via the provided context if it is paused.
- *
- * @param war     - The war document to check
- * @param context - The Chat.CommandContext to send error replies through
- * @returns True if the war is not paused, false otherwise
- */
 export function assertWarNotPaused(
 	war: ClanWar,
 	context: Chat.CommandContext
@@ -193,16 +131,6 @@ export function assertWarNotPaused(
 	return true;
 }
 
-// ─── War Paused Requirement ───────────────────────────────────────────────────
-
-/**
- * Checks that a war IS paused before allowing resume-related actions.
- * Sends an errorReply via the provided context if it is not paused.
- *
- * @param war     - The war document to check
- * @param context - The Chat.CommandContext to send error replies through
- * @returns True if the war is paused, false otherwise
- */
 export function assertWarIsPaused(
 	war: ClanWar,
 	context: Chat.CommandContext
@@ -214,14 +142,6 @@ export function assertWarIsPaused(
 	return true;
 }
 
-// ─── War Clan Resolver ────────────────────────────────────────────────────────
-
-/**
- * Resolves both clan documents from a war in the correct challenger/target order.
- *
- * @param war - The war document
- * @returns [clan1, clan2] where clan1 is always clans[0] (challenger), or null if either is missing
- */
 export async function resolveWarClans(
 	war: ClanWar
 ): Promise<[ClanDoc, ClanDoc] | null> {

@@ -1,9 +1,3 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans War Player Commands
- * @author PrinceSky-Git
- */
-
 import { Clans, ClanWars, type ClanWarDoc } from '../database';
 import { log } from '../utils';
 import { calculateElo, safeElo } from '../helpers/elo';
@@ -320,6 +314,9 @@ export const playerWarCommands: Chat.ChatCommands = {
 					{ _id: war._id },
 					{ $set: { status: 'completed', endDate: Date.now() } }
 				),
+			]);
+
+			await Promise.all([
 				log(myClanId, 'WAR_FORFEIT', `${user.id} forfeited to ${winnerClanId} (-${eloChange} ELO)`),
 				log(winnerClanId, 'WAR_WIN', `${user.id} forced ${myClanId} to forfeit (+${eloChange} ELO)`),
 			]);

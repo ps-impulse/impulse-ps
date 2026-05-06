@@ -1,13 +1,5 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans Context Helper
- * @author PrinceSky-Git
- */
-
 import { Clans, UserClans, ClanWars, type ClanDoc } from '../database';
 import type { ClanWar } from '../interface';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface ClanContext {
 	clan: ClanDoc;
@@ -28,16 +20,6 @@ export interface DualClanContext {
 	opponentClanId: ID;
 }
 
-// ─── User Clan Context ───────────────────────────────────────────────────────
-
-/**
- * Fetches the clan that a user belongs to.
- * Sends an errorReply via the provided context if any step fails.
- *
- * @param userId  - The user's ID
- * @param context - The Chat.CommandContext to send error replies through
- * @returns A ClanContext object, or null if any lookup failed
- */
 export async function getClanContext(
 	userId: ID,
 	context: Chat.CommandContext
@@ -59,16 +41,6 @@ export async function getClanContext(
 	return { clan, clanId };
 }
 
-// ─── Clan by ID ──────────────────────────────────────────────────────────────
-
-/**
- * Fetches a clan by its ID.
- * Sends an errorReply via the provided context if the clan is not found.
- *
- * @param clanId  - The clan ID to look up
- * @param context - The Chat.CommandContext to send error replies through
- * @returns The clan document, or null if not found
- */
 export async function getClanById(
 	clanId: ID,
 	context: Chat.CommandContext
@@ -81,17 +53,6 @@ export async function getClanById(
 	return clan;
 }
 
-// ─── Active War Context ──────────────────────────────────────────────────────
-
-/**
- * Fetches the active war between two clans and both clan documents.
- * Sends an errorReply via the provided context if any step fails.
- *
- * @param clanId         - One of the two clan IDs
- * @param opponentClanId - The other clan ID
- * @param context        - The Chat.CommandContext to send error replies through
- * @returns A WarContext object, or null if any lookup failed
- */
 export async function getActiveWarContext(
 	clanId: ID,
 	opponentClanId: ID,
@@ -121,17 +82,6 @@ export async function getActiveWarContext(
 	return { war, clan1, clan2, uhtmlId };
 }
 
-// ─── Pending War Context ─────────────────────────────────────────────────────
-
-/**
- * Fetches a pending war between two clans and both clan documents.
- * Sends an errorReply via the provided context if any step fails.
- *
- * @param challengerClanId - The clan that issued the challenge (clans[0])
- * @param targetClanId     - The clan that received the challenge (clans[1])
- * @param context          - The Chat.CommandContext to send error replies through
- * @returns A WarContext object, or null if any lookup failed
- */
 export async function getPendingWarContext(
 	challengerClanId: ID,
 	targetClanId: ID,
@@ -161,17 +111,6 @@ export async function getPendingWarContext(
 	return { war, clan1, clan2, uhtmlId };
 }
 
-// ─── Dual Clan Context ───────────────────────────────────────────────────────
-
-/**
- * Fetches both the user's clan and an opponent clan in one call.
- * Sends an errorReply via the provided context if any step fails.
- *
- * @param userId         - The acting user's ID
- * @param opponentClanId - The opponent clan ID
- * @param context        - The Chat.CommandContext to send error replies through
- * @returns A DualClanContext object, or null if any lookup failed
- */
 export async function getDualClanContext(
 	userId: ID,
 	opponentClanId: ID,
@@ -196,15 +135,6 @@ export async function getDualClanContext(
 	};
 }
 
-// ─── Existing War Check ──────────────────────────────────────────────────────
-
-/**
- * Checks whether a clan already has a pending or active war.
- * Returns the existing war document if found, or null if the clan is free.
- *
- * @param clanId - The clan ID to check
- * @returns The existing ClanWar or null
- */
 export async function getExistingWar(clanId: ID): Promise<ClanWar | null> {
 	return ClanWars.findOne({
 		clans: clanId,
@@ -212,17 +142,6 @@ export async function getExistingWar(clanId: ID): Promise<ClanWar | null> {
 	});
 }
 
-// ─── Member Validation ───────────────────────────────────────────────────────
-
-/**
- * Checks that a target user is a member of the given clan.
- * Sends an errorReply via the provided context if not.
- *
- * @param clan    - The clan document
- * @param targetId - The user ID to check membership for
- * @param context  - The Chat.CommandContext to send error replies through
- * @returns True if the user is a member, false otherwise
- */
 export function assertClanMember(
 	clan: ClanDoc,
 	targetId: ID,
@@ -235,15 +154,6 @@ export function assertClanMember(
 	return true;
 }
 
-/**
- * Checks that a target user is NOT the clan owner.
- * Sends an errorReply via the provided context if they are.
- *
- * @param clan     - The clan document
- * @param targetId - The user ID to check
- * @param context  - The Chat.CommandContext to send error replies through
- * @returns True if the user is not the owner, false otherwise
- */
 export function assertNotOwner(
 	clan: ClanDoc,
 	targetId: ID,

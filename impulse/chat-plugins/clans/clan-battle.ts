@@ -1,17 +1,9 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans Battle Hook
- * @author PrinceSky-Git
- */
-
 import { Clans, UserClans, ClanBattleLogs, ClanWars } from './database';
 import type { ClanBattleLogEntry } from './interface';
 import { calculateElo, safeElo } from './helpers/elo';
 import { broadcastWarUpdate, broadcastWarEnded, getWarUhtmlId } from './helpers/broadcast';
 import { resolveWarClans } from './war/war-context';
 import { log } from './utils';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface BattleEndResult {
 	winner: ID;
@@ -20,12 +12,6 @@ interface BattleEndResult {
 	loserClanId: ID;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/**
- * Validates that both players are in different clans and returns their clan IDs.
- * Returns null if either player has no clan or both are in the same clan.
- */
 async function resolveBattleClans(
 	winner: ID,
 	loser: ID
@@ -45,10 +31,6 @@ async function resolveBattleClans(
 	return { winner, loser, winnerClanId, loserClanId };
 }
 
-/**
- * Handles the conclusion of a war when the winning clan reaches the wins needed.
- * Updates ELO, clan stats, war status, and broadcasts the war ended card.
- */
 async function handleWarConclusion(
 	battle: RoomBattle,
 	result: BattleEndResult,
@@ -118,6 +100,9 @@ async function handleWarConclusion(
 				}
 			),
 			ClanBattleLogs.insertOne(battleLogEntry),
+		]);
+
+		await Promise.all([
 			log(winnerClanId, 'WAR_WIN', `won against ${loserClanId} with score ${newWinnerScore}-${newLoserScore} (+${eloChange} ELO)`),
 			log(loserClanId, 'WAR_LOSS', `lost against ${winnerClanId} with score ${newLoserScore}-${newWinnerScore} (-${eloChange} ELO)`),
 		]);
@@ -146,10 +131,6 @@ async function handleWarConclusion(
 	}
 }
 
-/**
- * Handles a battle win within an ongoing war (not yet concluded).
- * Updates the score and broadcasts the updated war card.
- */
 async function handleWarBattleWin(
 	battle: RoomBattle,
 	result: BattleEndResult,
@@ -215,12 +196,6 @@ async function handleWarBattleWin(
 	}
 }
 
-// ─── Main Battle End Handler ──────────────────────────────────────────────────
-
-/**
- * Main handler fired when a battle ends.
- * Checks if both players are in an active war and processes the result.
- */
 async function handleClanBattleEnd(
 	battle: RoomBattle,
 	winner: ID,
@@ -252,7 +227,7 @@ async function handleClanBattleEnd(
 	let war: any;
 	try {
 		war = await ClanWars.findOne({
-			clans: { $all: [winnerClanId, loserClanId] },
+			clans: { $all: [winnerClanId, loserClanId] } as any,
 			status: 'active',
 		});
 	} catch (e) {
@@ -283,8 +258,6 @@ async function handleClanBattleEnd(
 		await handleWarBattleWin(battle, result, war, newWinnerScore);
 	}
 }
-
-// ─── Handler Export ───────────────────────────────────────────────────────────
 
 export const handlers: Chat.Handlers = {
 	onBattleEnd: (battle, winner, players) => {

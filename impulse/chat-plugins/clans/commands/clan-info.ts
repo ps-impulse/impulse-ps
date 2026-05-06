@@ -1,9 +1,3 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans Info & Settings Commands
- * @author PrinceSky-Git
- */
-
 import { Clans, UserClans, ClanLogs, ClanPointsLogs, ClanBattleLogs } from '../database';
 import { hasMinRole, log, to, toDurationString } from '../utils';
 import { getClanContext, getClanById } from '../helpers/context';
@@ -124,7 +118,6 @@ export const clanInfoCommands: Chat.ChatCommands = {
 			return user.popup(`|html|<div class="infobox"><center>No activity logs found for ${esc(clan.name)}.</center></div>`);
 		}
 
-		// ─── Compact one-line-per-entry display ───────────────────────────────
 		let html = `<div class="infobox" style="max-width:550px; max-height:400px; overflow-y:auto; font-size:0.9em;">`;
 		html += `<center><strong>${esc(clan.name)} Activity Log</strong></center><hr>`;
 		html += `<table style="width:100%; border-collapse:collapse;">`;
@@ -279,14 +272,14 @@ export const clanInfoCommands: Chat.ChatCommands = {
 		try {
 			await Clans.updateOne({ _id: clanId }, { $set: { desc: description } });
 
-			await log(clanId, 'SET_DESC', `${actorId} updated the description`);
-
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
 				clanRoom.settings.desc = description;
 				clanRoom.saveSettings();
 				clanRoom.add(`|html|<div class="infobox"><center>${esc(user.name)} updated the clan description.</center></div>`).update();
 			}
+
+			await log(clanId, 'SET_DESC', `${actorId} updated the description`);
 
 			this.sendReply(`You updated the clan description to: "${esc(description)}"`);
 			refreshClanPage(user);
@@ -325,12 +318,12 @@ export const clanInfoCommands: Chat.ChatCommands = {
 		try {
 			await Clans.updateOne({ _id: clanId }, { $set: { tag } });
 
-			await log(clanId, 'SET_TAG', `${actorId} changed the tag from ${oldTag} to ${tag}`);
-
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
 				clanRoom.add(`|html|<div class="infobox"><center>${esc(user.name)} updated the clan tag from "${esc(oldTag)}" to "${esc(tag)}".</center></div>`).update();
 			}
+
+			await log(clanId, 'SET_TAG', `${actorId} changed the tag from ${oldTag} to ${tag}`);
 
 			this.sendReply(`You updated the clan tag from "${esc(oldTag)}" to "${esc(tag)}".`);
 		} catch (e) {
@@ -368,8 +361,6 @@ export const clanInfoCommands: Chat.ChatCommands = {
 		try {
 			await Clans.updateOne({ _id: clanId }, { $set: { memberOfTheWeek: targetId } });
 
-			await log(clanId, 'SET_MOTW', `${actorId} set ${targetId} as Member of the Week`);
-
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
 				if (oldMotw && oldMotw !== targetId && clan.members[oldMotw]) {
@@ -391,6 +382,8 @@ export const clanInfoCommands: Chat.ChatCommands = {
 			if (targetUser?.connected) {
 				targetUser.popup(`|html|<div class="infobox">Congratulations! You have been named <b>Member of the Week</b> in ${esc(clan.name)} by ${esc(user.name)}!</div>`);
 			}
+
+			await log(clanId, 'SET_MOTW', `${actorId} set ${targetId} as Member of the Week`);
 
 			this.sendReply(`You set '${esc(targetId)}' as the Member of the Week for ${esc(clan.name)}.`);
 		} catch (e) {
@@ -426,12 +419,12 @@ export const clanInfoCommands: Chat.ChatCommands = {
 		try {
 			await Clans.updateOne({ _id: clanId }, { $set: { icon: iconUrl } });
 
-			await log(clanId, 'SET_ICON', `${actorId} updated the icon`);
-
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
 				clanRoom.add(`|html|<div class="infobox"><center>${esc(user.name)} updated the clan icon.</center></div>`).update();
 			}
+
+			await log(clanId, 'SET_ICON', `${actorId} updated the icon`);
 
 			this.sendReply(`You updated the clan icon.`);
 		} catch (e) {
