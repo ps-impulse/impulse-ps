@@ -1,7 +1,7 @@
-import { Clans, UserClans, ClanWars } from './database';
+import { Clans, UserClans, ClanWars, ClanLogs } from './database';
 import { ELO_K_FACTOR, MIN_ELO_CHANGE, ROOM_RANK_OWNER, ROOM_RANK_LEADER, ROOM_RANK_OFFICER, ROOM_RANK_MEMBER } from './constants';
 import { Utils, FS } from '../../../lib';
-import type { Clan, ClanMember, ClanRole, ClanWar, ClanLogs } from './interface';
+import type { Clan, ClanMember, ClanRole, ClanWar, ClanLogType } from './interface';
 import type { Clans, UserClans, ClanWars, ClanLogs } from './database';
 
 const esc = (v: string | number | undefined | null) => Utils.escapeHTML(String(v ?? ''));
