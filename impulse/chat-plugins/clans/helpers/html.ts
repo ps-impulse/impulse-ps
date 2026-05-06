@@ -1,16 +1,8 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans HTML Builder Helper
- * @author PrinceSky-Git
- */
-
 import { Utils } from '../../../../lib';
 import { displayElo } from './elo';
 import { toDurationString, to } from '../utils';
 import type { ClanWar } from '../interface';
 import type { ClanDoc } from '../database';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
 
 export type WarCardPerspective = 'challenger' | 'target' | 'public' | 'ended';
 
@@ -23,22 +15,11 @@ export interface WarCardOptions {
 	};
 }
 
-// ─── Utility ─────────────────────────────────────────────────────────────────
-
-/**
- * Escapes a value for safe HTML output.
- * Falls back to an empty string for null/undefined.
- */
 function esc(value: string | number | undefined | null): string {
 	if (value === null || value === undefined) return '';
 	return Utils.escapeHTML(String(value));
 }
 
-// ─── War Card Sections ───────────────────────────────────────────────────────
-
-/**
- * Builds the war card header showing both clan names and ELO ratings.
- */
 function buildWarCardHeader(
 	clan1: ClanDoc,
 	clan2: ClanDoc,
@@ -63,9 +44,6 @@ function buildWarCardHeader(
 	return html;
 }
 
-/**
- * Builds the score display for an active war.
- */
 function buildScoreDisplay(
 	war: ClanWar,
 	clan1: ClanDoc,
@@ -89,9 +67,6 @@ function buildScoreDisplay(
 	return html;
 }
 
-/**
- * Builds the status badge for a war card (PENDING, ACTIVE, PAUSED, COMPLETED).
- */
 function buildStatusBadge(war: ClanWar): string {
 	if (war.status === 'pending') {
 		return `<strong>Status:</strong> <span style="color: #E8A337; font-weight: bold;">PENDING</span>`;
@@ -108,9 +83,6 @@ function buildStatusBadge(war: ClanWar): string {
 	return '';
 }
 
-/**
- * Builds the action buttons for the challenger's perspective.
- */
 function buildChallengerActions(
 	war: ClanWar,
 	clan1: ClanDoc,
@@ -139,9 +111,6 @@ function buildChallengerActions(
 	return html;
 }
 
-/**
- * Builds the action buttons for the target clan's perspective.
- */
 function buildTargetActions(
 	war: ClanWar,
 	clan1: ClanDoc,
@@ -168,9 +137,6 @@ function buildTargetActions(
 	return html;
 }
 
-/**
- * Builds the action buttons for the public lobby perspective.
- */
 function buildPublicActions(war: ClanWar, clan2: ClanDoc, options: WarCardOptions): string {
 	if (war.status === 'pending') {
 		return `<em>Waiting for ${esc(clan2.name)} to respond...</em>`;
@@ -185,10 +151,6 @@ function buildPublicActions(war: ClanWar, clan2: ClanDoc, options: WarCardOption
 	return '';
 }
 
-/**
- * Builds the interactive action buttons for an active (non-paused or paused) war
- * from the perspective of one of the two participants.
- */
 function buildActiveActions(
 	war: ClanWar,
 	myId: ID,
@@ -239,18 +201,6 @@ function buildActiveActions(
 	return html;
 }
 
-// ─── Main War Card Builder ────────────────────────────────────────────────────
-
-/**
- * Generates a full war card HTML string for the given perspective.
- *
- * @param war         - The war document
- * @param clan1       - The challenger clan (clans[0])
- * @param clan2       - The target clan (clans[1])
- * @param perspective - Which clan's perspective to render for
- * @param options     - Optional endMessage or lastBattle data
- * @returns A complete HTML string for use in uhtml/uhtmlchange
- */
 export function generateWarCard(
 	war: ClanWar,
 	clan1: ClanDoc,
@@ -301,14 +251,6 @@ export function generateWarCard(
 	return html;
 }
 
-// ─── Clan Profile Card ───────────────────────────────────────────────────────
-
-/**
- * Builds the full HTML for a clan's profile card.
- *
- * @param clan - The clan document to render
- * @returns A complete HTML string for the profile infobox
- */
 export function generateClanProfile(clan: ClanDoc): string {
 	const totalMembers = Object.keys(clan.members).length;
 	const clanAge = toDurationString(Date.now() - clan.created);
@@ -322,7 +264,6 @@ export function generateClanProfile(clan: ClanDoc): string {
 
 	let html = `<div class="infobox" style="display: flex; align-items: stretch; padding: 15px; min-height: ${h + 30}px;">`;
 
-	// Icon column
 	html += `<div style="flex: 0 0 ${w + 20}px; padding-right: 20px; border-right: 1px solid #ccc; overflow-y: hidden; text-align: center;">`;
 	if (clan.icon) {
 		html += `<img src="${esc(clan.icon)}" width="${w}" alt="${esc(clan.name)} Icon" style="border-radius: 8px; display: block; margin: 0 auto;" />`;
@@ -333,7 +274,6 @@ export function generateClanProfile(clan: ClanDoc): string {
 	}
 	html += `</div>`;
 
-	// Info column
 	html += `<div style="flex: 1; line-height: 1.7; margin-left: 20px; max-height: ${h + 30}px; overflow-y: auto;">`;
 	html += `<strong style="font-size: 22px;">${esc(clan.name)}</strong><br />`;
 	html += `<div style="margin-top: 12px; font-size: 0.95em;">`;
@@ -350,16 +290,6 @@ export function generateClanProfile(clan: ClanDoc): string {
 	return html;
 }
 
-// ─── Clan Announcement Popup ─────────────────────────────────────────────────
-
-/**
- * Builds a popup HTML string for a clan announcement.
- *
- * @param message   - The announcement message
- * @param senderName - The name of the sender
- * @param clanName  - The name of the clan
- * @returns A complete HTML string for the popup
- */
 export function generateAnnouncementPopup(
 	message: string,
 	senderName: string,
@@ -374,16 +304,6 @@ export function generateAnnouncementPopup(
 	);
 }
 
-// ─── Invite Popup ────────────────────────────────────────────────────────────
-
-/**
- * Builds a popup HTML string for a clan invite notification.
- *
- * @param clanName    - The name of the inviting clan
- * @param clanId      - The ID of the inviting clan
- * @param inviterName - The name of the user who sent the invite
- * @returns A complete HTML string for the popup
- */
 export function generateInvitePopup(
 	clanName: string,
 	clanId: ID,
@@ -399,17 +319,6 @@ export function generateInvitePopup(
 	);
 }
 
-// ─── War Stats Block ─────────────────────────────────────────────────────────
-
-/**
- * Builds the full HTML for a clan's war statistics display.
- *
- * @param clan              - The clan document
- * @param completedWars     - All completed wars for this clan
- * @param activePendingWars - All active or pending wars for this clan
- * @param battleLogs        - All battle log entries for this clan
- * @returns A complete HTML string for the stats infobox
- */
 export function generateWarStats(
 	clan: ClanDoc,
 	completedWars: ClanWar[],
@@ -472,16 +381,6 @@ export function generateWarStats(
 	return html;
 }
 
-// ─── Head-to-Head Record Block ───────────────────────────────────────────────
-
-/**
- * Builds the full HTML for a head-to-head rivalry record between two clans.
- *
- * @param clan1  - First clan document
- * @param clan2  - Second clan document
- * @param wars   - All completed wars between the two clans
- * @returns A complete HTML string for the record infobox
- */
 export function generateHeadToHeadRecord(
 	clan1: ClanDoc,
 	clan2: ClanDoc,
