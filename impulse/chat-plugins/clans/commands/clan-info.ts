@@ -440,6 +440,3 @@ export const clanInfoCommands: Chat.ChatCommands = {
 		}
 	},
 };
-	}
-	},
-};
