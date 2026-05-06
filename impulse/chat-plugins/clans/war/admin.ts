@@ -1,9 +1,3 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans War Admin Commands
- * @author PrinceSky-Git
- */
-
 import { Clans, ClanWars, type ClanWarDoc } from '../database';
 import { log } from '../utils';
 import { calculateElo, safeElo } from '../helpers/elo';
@@ -140,6 +134,9 @@ export const adminWarCommands: Chat.ChatCommands = {
 					{ _id: war._id },
 					{ $set: { status: 'completed', endDate: Date.now() } }
 				),
+			]);
+
+			await Promise.all([
 				log(loserClanIdRaw, 'ADMIN_WAR_FORFEIT', `${user.id} forced forfeit to ${winnerClanIdRaw} (-${eloChange} ELO)`),
 				log(winnerClanIdRaw, 'WAR_WIN', `${user.id} forced ${loserClanIdRaw} to forfeit (+${eloChange} ELO)`),
 			]);
@@ -176,8 +173,6 @@ export const adminWarCommands: Chat.ChatCommands = {
 				{ _id: clanId },
 				{ $unset: { 'stats.lastWarChallenge': 1 } }
 			);
-
-			// Cooldown resets are not logged — low audit value
 
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
@@ -231,8 +226,6 @@ export const adminWarCommands: Chat.ChatCommands = {
 			const updatedWar = await ClanWars.findOne({ _id: war._id });
 			if (!updatedWar) return this.errorReply("Failed to fetch war data after update.");
 
-			// Score adjustments are not logged — low audit value
-
 			const uhtmlId = getWarUhtmlId(updatedWar._id);
 			const lastBattle = {
 				winnerName: "Admin",
@@ -283,8 +276,6 @@ export const adminWarCommands: Chat.ChatCommands = {
 			const updatedWar = await ClanWars.findOne({ _id: war._id });
 			if (!updatedWar) return this.errorReply("Failed to fetch war data after update.");
 
-			// Best of changes are not logged — low audit value
-
 			const uhtmlId = getWarUhtmlId(updatedWar._id);
 			const lastBattle = {
 				winnerName: "Admin",
@@ -325,8 +316,6 @@ export const adminWarCommands: Chat.ChatCommands = {
 			const updatedWar = await ClanWars.findOne({ _id: war._id });
 			if (!updatedWar) return this.errorReply("Failed to fetch war data after update.");
 
-			// Force pauses are not logged — low audit value
-
 			const uhtmlId = getWarUhtmlId(updatedWar._id);
 			broadcastWarUpdate(updatedWar, clan1, clan2, uhtmlId, 'change');
 
@@ -362,8 +351,6 @@ export const adminWarCommands: Chat.ChatCommands = {
 			const updatedWar = await ClanWars.findOne({ _id: war._id });
 			if (!updatedWar) return this.errorReply("Failed to fetch war data after update.");
 
-			// Force resumes are not logged — low audit value
-
 			const uhtmlId = getWarUhtmlId(updatedWar._id);
 			broadcastWarUpdate(updatedWar, clan1, clan2, uhtmlId, 'change');
 
@@ -391,8 +378,6 @@ export const adminWarCommands: Chat.ChatCommands = {
 
 		try {
 			await ClanWars.deleteOne({ _id: war._id });
-
-			// Pending clears are not logged — low audit value
 
 			const uhtmlId = getWarUhtmlId(war._id);
 			const clearedHtml = `<div class="infobox">This challenge has been cleared by an admin.</div>`;
@@ -462,8 +447,6 @@ export const adminWarCommands: Chat.ChatCommands = {
 
 			const war = await ClanWars.findOne({ _id: warId });
 			if (!war) return this.errorReply("Failed to fetch the newly created war. Aborting.");
-
-			// Force creates are not logged — outcome events are what matter
 
 			const uhtmlId = getWarUhtmlId(war._id);
 			const lastBattle = {

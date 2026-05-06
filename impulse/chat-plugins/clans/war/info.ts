@@ -1,9 +1,3 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans War Info Commands
- * @author PrinceSky-Git
- */
-
 import { Clans, UserClans, ClanWars, ClanBattleLogs } from '../database';
 import { to } from '../utils';
 import { getClanById } from '../helpers/context';

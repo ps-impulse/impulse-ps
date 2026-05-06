@@ -1,14 +1,6 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans War Commands Index
- * @author PrinceSky-Git
- */
-
 import { playerWarCommands } from './player';
 import { infoWarCommands } from './info';
 import { adminWarCommands } from './admin';
-
-// ─── Help Lists ───────────────────────────────────────────────────────────────
 
 const PLAYER_WAR_HELP = [
 	{ cmd: "/clan war status [clanid]", desc: "View your clan's active/pending war status. Defaults to your clan." },
@@ -45,8 +37,6 @@ const ADMIN_WAR_HELP = [
 	{ cmd: "/clan war forcecreate [clan1id], [clan2id], [bestof]", desc: "Instantly create an active war. Requires: &." },
 ];
 
-// ─── Help Builder ─────────────────────────────────────────────────────────────
-
 function buildWarHelpHtml(
 	sections: { title: string; items: { cmd: string; desc: string }[] }[]
 ): string {
@@ -65,19 +55,11 @@ function buildWarHelpHtml(
 	return html;
 }
 
-// ─── Final War Commands Export ────────────────────────────────────────────────
-
 export const warCommands: Chat.ChatCommands = {
-	// ── Player Commands ──────────────────────────────────────────────────────
 	...playerWarCommands,
-
-	// ── Info Commands ────────────────────────────────────────────────────────
 	...infoWarCommands,
-
-	// ── Admin Commands ───────────────────────────────────────────────────────
 	...adminWarCommands,
 
-	// ── Help ─────────────────────────────────────────────────────────────────
 	help() {
 		if (!this.runBroadcast()) return;
 		const html = buildWarHelpHtml([
