@@ -57,7 +57,7 @@ interface ClanFile {
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
-const BASE = 'impulse/db';
+const BASE = 'impulse/data/clans';
 const WARS_DIR = `${BASE}/wars`;
 const USERS_PATH = `${BASE}/users.json`;
 const BANS_PATH = `${BASE}/bans.json`;

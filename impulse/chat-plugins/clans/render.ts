@@ -3,6 +3,7 @@ import { Clans, UserClans } from './database';
 import { getClanById } from './helpers/context';
 import { displayElo } from './helpers/elo';
 import { toDurationString } from './utils';
+import { getUIState, type ClanUIState } from './state';
 
 // ─── Primitive UI Helpers (Using PokeRogue CSS) ──────────────────────────────
 
@@ -19,20 +20,35 @@ export function renderBtn(cmd: string | null, label: string, className = 'pr-btn
 export function renderHeader(title: string, showBack = true): string {
 	let buf = `<div class="pr-header"><h2>${title}</h2>`;
 	if (showBack) {
-		buf += renderBtn('/join view-clans-main', '← Back', 'pr-btn', 'font-size:11px;padding:5px 10px');
+		buf += renderBtn('/clan view main', '← Back', 'pr-btn', 'font-size:11px;padding:5px 10px');
 	}
 	return buf + `</div>`;
 }
 
 export function refreshClanPage(user: User): void {
 	for (const conn of user.connections) {
-		if (conn.openPages) {
-			for (const page of conn.openPages) {
-				if (page.startsWith('clans')) {
-					Chat.parse(`/join view-${page}`, null, user, conn);
-				}
-			}
+		if (conn.openPages?.has('clans')) {
+			Chat.parse(`/join view-clans`, null, user, conn);
 		}
+	}
+}
+
+// ─── Main Dispatcher ─────────────────────────────────────────────────────────
+
+export async function renderClanPage(user: User, room: Room): Promise<string> {
+	const state = getUIState(user.id);
+	
+	switch (state.view) {
+	case 'main':
+		return await renderMainView(user);
+	case 'profile':
+		return await renderClanProfile(state.targetId || '', user, room);
+	case 'list':
+		return await renderClanList(state.page || 1);
+	case 'members':
+		return await renderMembers(state.targetId || '', user, room);
+	default:
+		return await renderMainView(user);
 	}
 }
 
@@ -46,9 +62,9 @@ export async function renderMainView(user: User): Promise<string> {
 	buf += `<div style="padding: 14px">`;
 
 	buf += `<div class="pr-actions">`;
-	buf += renderBtn('/join view-clans-list-1', 'Ladder', 'pr-btn primary');
+	buf += renderBtn('/clan view list 1', 'Ladder', 'pr-btn primary');
 	if (userClanInfo?.memberOf) {
-		buf += renderBtn(`/join view-clans-profile-${userClanInfo.memberOf}`, 'My Clan');
+		buf += renderBtn(`/clan view profile ${userClanInfo.memberOf}`, 'My Clan');
 	}
 	buf += `</div>`;
 	
@@ -92,15 +108,14 @@ export async function renderClanProfile(clanId: string, user: User, room: Room):
 	}
 
 	buf += `<div class="pr-actions">`;
-	buf += renderBtn(`/join view-clans-members-${clan._id}`, 'Members', 'pr-btn primary');
-	buf += renderBtn(`/join view-clans-logs-${clan._id}`, 'Logs', 'pr-btn');
-	buf += renderBtn(`/join view-clans-wars-${clan._id}`, 'Wars', 'pr-btn');
+	buf += renderBtn(`/clan view members ${clan._id}`, 'Members', 'pr-btn primary');
+	// buf += renderBtn(`/clan view logs ${clan._id}`, 'Logs', 'pr-btn');
+	// buf += renderBtn(`/clan view wars ${clan._id}`, 'Wars', 'pr-btn');
 	buf += `</div></div></div>`;
 	return buf;
 }
 
-export async function renderClanList(pageStr: string): Promise<string> {
-	const page = parseInt(pageStr) || 1;
+export async function renderClanList(page: number): Promise<string> {
 	const limit = 20;
 	const skip = (page - 1) * limit;
 
@@ -127,15 +142,15 @@ export async function renderClanList(pageStr: string): Promise<string> {
 		buf += `<td>${Utils.escapeHTML(clan.tag)}</td>`;
 		buf += `<td>${memberCount}</td>`;
 		buf += `<td><strong>${displayElo(clan.stats.elo)}</strong></td>`;
-		buf += `<td>${renderBtn(`/join view-clans-profile-${clan._id}`, 'Profile', 'pr-shop-buy', 'padding: 4px 8px; font-size: 10px;')}</td>`;
+		buf += `<td>${renderBtn(`/clan view profile ${clan._id}`, 'Profile', 'pr-shop-buy', 'padding: 4px 8px; font-size: 10px;')}</td>`;
 		buf += `</tr>`;
 	});
 
 	buf += `</tbody></table></div>`;
 	
 	buf += `<div class="pr-actions" style="margin-top: 14px;">`;
-	if (page > 1) buf += renderBtn(`/join view-clans-list-${page - 1}`, 'Previous', 'pr-btn');
-	if (page < totalPages) buf += renderBtn(`/join view-clans-list-${page + 1}`, 'Next', 'pr-btn');
+	if (page > 1) buf += renderBtn(`/clan view list ${page - 1}`, 'Previous', 'pr-btn');
+	if (page < totalPages) buf += renderBtn(`/clan view list ${page + 1}`, 'Next', 'pr-btn');
 	buf += `</div></div></div>`;
 	return buf;
 }
