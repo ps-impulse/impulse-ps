@@ -77,67 +77,6 @@ function buildHelpHtml(
 	return html;
 }
 
-export const commands: Chat.ChatCommands = {
-	clan: {
-		...memberCommands,
-		...rankCommands,
-		...clanInfoCommands,
-		...adminCommands,
-		war: {
-			...warCommands,
-		},
-		help() {
-			if (!this.runBroadcast()) return;
-			const html = buildHelpHtml([
-				{ title: 'Member Commands', items: MEMBER_HELP },
-				{ title: 'Role Commands', items: ROLE_HELP },
-				{ title: 'Info & Settings', items: INFO_HELP },
-				{ title: 'War Commands', items: WAR_HELP },
-				{ title: 'Admin Commands', items: ADMIN_HELP },
-			]);
-			this.sendReplyBox(html);
-		},
-
-		view(target, room, user) {
-			this.checkChat();
-			const [view, ...args] = target.split(' ');
-			const clanView = view as ClanView;
-
-			switch (clanView) {
-			case 'main':
-				setUIState(user.id, { view: 'main' });
-				break;
-			case 'profile':
-				setUIState(user.id, { view: 'profile', targetId: args[0] });
-				break;
-			case 'list':
-				setUIState(user.id, { view: 'list', page: parseInt(args[0]) || 1 });
-				break;
-			case 'members':
-				setUIState(user.id, { view: 'members', targetId: args[0] });
-				break;
-			default:
-				return this.errorReply(`Unknown view: ${view}`);
-			}
-
-			refreshClanPage(user);
-		},
-
-		'': function () {
-			return this.parse('/join view-clans');
-		},
-	},
-};
-
-export const pages: Chat.PageTable = {
-	async clans(args, user) {
-		if (!user.named) return this.errorReply('Login required to view clans.');
-		this.title = `Clans`;
-		return await renderClanPage(user, this.room!);
-	},
-};
-
-
 const PLAYER_WAR_HELP = [
 	{ cmd: "/clan war status [clanid]", desc: "View your clan's active/pending war status. Defaults to your clan." },
 	{ cmd: "/clan war challenge [clanid], [bestof]", desc: "Challenge another clan to a War." },
@@ -204,5 +143,65 @@ export const warCommands: Chat.ChatCommands = {
 			{ title: 'Admin War Commands', items: ADMIN_WAR_HELP },
 		]);
 		this.sendReplyBox(html);
+	},
+};
+
+export const commands: Chat.ChatCommands = {
+	clan: {
+		...memberCommands,
+		...rankCommands,
+		...clanInfoCommands,
+		...adminCommands,
+		war: {
+			...warCommands,
+		},
+		help() {
+			if (!this.runBroadcast()) return;
+			const html = buildHelpHtml([
+				{ title: 'Member Commands', items: MEMBER_HELP },
+				{ title: 'Role Commands', items: ROLE_HELP },
+				{ title: 'Info & Settings', items: INFO_HELP },
+				{ title: 'War Commands', items: WAR_HELP },
+				{ title: 'Admin Commands', items: ADMIN_HELP },
+			]);
+			this.sendReplyBox(html);
+		},
+
+		view(target, room, user) {
+			this.checkChat();
+			const [view, ...args] = target.split(' ');
+			const clanView = view as ClanView;
+
+			switch (clanView) {
+			case 'main':
+				setUIState(user.id, { view: 'main' });
+				break;
+			case 'profile':
+				setUIState(user.id, { view: 'profile', targetId: args[0] });
+				break;
+			case 'list':
+				setUIState(user.id, { view: 'list', page: parseInt(args[0]) || 1 });
+				break;
+			case 'members':
+				setUIState(user.id, { view: 'members', targetId: args[0] });
+				break;
+			default:
+				return this.errorReply(`Unknown view: ${view}`);
+			}
+
+			refreshClanPage(user);
+		},
+
+		'': function () {
+			return this.parse('/join view-clans');
+		},
+	},
+};
+
+export const pages: Chat.PageTable = {
+	async clans(args, user) {
+		if (!user.named) return this.errorReply('Login required to view clans.');
+		this.title = `Clans`;
+		return await renderClanPage(user, this.room!);
 	},
 };
