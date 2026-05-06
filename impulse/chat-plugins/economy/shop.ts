@@ -57,9 +57,9 @@ const cleanOldLogs = (): void => {
 	const now = Date.now();
 	const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 	const initialLength = logsData.length;
-	
+
 	logsData = logsData.filter(log => (now - log.timestamp) <= sevenDaysMs);
-	
+
 	if (logsData.length !== initialLength) {
 		saveLogs();
 	}
@@ -107,7 +107,7 @@ export const commands: ChatCommands = {
 			}
 
 			setBalance(user.id, balance - item.cost);
-			
+
 			logsData.push({
 				user: user.name,
 				item: itemName,
@@ -189,7 +189,7 @@ export const commands: ChatCommands = {
 
 		logs(target, room, user) {
 			this.checkCan('roomowner');
-			
+
 			cleanOldLogs();
 
 			if (!logsData.length) {
@@ -200,13 +200,13 @@ export const commands: ChatCommands = {
 
 			let html = `<div style="max-height: 350px; overflow-y: auto;">`;
 			html += `<center><strong><h4>Shop Logs</h4></strong><hr></center>`;
-			
+
 			const formattedLogs = sortedLogs.map(log => {
 				const dateObj = new Date(log.timestamp);
 				const day = String(dateObj.getDate()).padStart(2, '0');
 				const month = String(dateObj.getMonth() + 1).padStart(2, '0');
 				const year = dateObj.getFullYear();
-				
+
 				return `<strong>${Chat.escapeHTML(log.user)}</strong> purchased <strong>${Chat.escapeHTML(log.item)}</strong> on ${day}-${month}-${year}`;
 			});
 

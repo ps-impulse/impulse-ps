@@ -3,36 +3,36 @@ import { FS } from '../../../lib';
 const ROGUELIKE_DATA_PATH = 'impulse/chat-plugins/pokerogue';
 
 export type ItemType =
-        | 'pokeball'
-        | 'healHP'
-        | 'TM'
-        | 'key'
-        | 'revive'
-        | 'cureStatus'
-        | 'itemPack'
-        | 'item'
-        | 'evolveItem';
+	| 'pokeball' |
+	'healHP' |
+	'TM' |
+	'key' |
+	'revive' |
+	'cureStatus' |
+	'itemPack' |
+	'item' |
+	'evolveItem';
 
 export interface ShopItem {
-        name: string;
-        icon: string;
-        type: ItemType;
-        desc: string;
-        cost: number;
-        minFloor: number;
+	name: string;
+	icon: string;
+	type: ItemType;
+	desc: string;
+	cost: number;
+	minFloor: number;
 }
 
 export interface RotationalItem {
-        name: string;
-        cost: number;
-        icon: string;
-        type: ItemType;
-        desc: string;
-        minFloor: number;
+	name: string;
+	cost: number;
+	icon: string;
+	type: ItemType;
+	desc: string;
+	minFloor: number;
 }
 
 export interface TMItem extends RotationalItem {
-        move: string;
+	move: string;
 }
 
 export const TM_LIST: Record<string, TMItem> =
@@ -47,117 +47,117 @@ export const SHOP_ITEMS: Record<string, ShopItem> =
         JSON.parse(FS(`${ROGUELIKE_DATA_PATH}/shopdb.json`).readSync());
 
 export function genItem(quantity: number, extraArg?: PokemonSet[] | string): string[] {
-        let all = Dex.items.all().filter(s => (s.isGem || s.itemUser || s.zMove) || !s.isNonstandard);
-        all = all.filter(i => {
-                if (i.itemUser) {
-                        if (typeof extraArg === 'string') {
-                                const dexSpecies = Dex.species.get(extraArg);
-                                let validSpecies = [dexSpecies.name];
-                                if (dexSpecies.otherFormes) validSpecies = validSpecies.concat(dexSpecies.otherFormes);
-                                return i.itemUser.some(v => validSpecies.includes(v));
-                        } else if (extraArg?.length) {
-                                return extraArg.some(poke => {
-                                        const dexSpecies = Dex.species.get(poke.species);
-                                        let validSpecies = [dexSpecies.name];
-                                        if (dexSpecies.otherFormes) validSpecies = validSpecies.concat(dexSpecies.otherFormes);
-                                        return i.itemUser?.some(v => validSpecies.includes(v));
-                                });
-                        }
-                } else {
-                        if (i.zMove) return true;
-                                                return Object.keys(i).some(k => typeof (i as any)[k] === 'function');
-                }
-                return false;
-        });
+	let all = Dex.items.all().filter(s => (s.isGem || s.itemUser || s.zMove) || !s.isNonstandard);
+	all = all.filter(i => {
+		if (i.itemUser) {
+			if (typeof extraArg === 'string') {
+				const dexSpecies = Dex.species.get(extraArg);
+				let validSpecies = [dexSpecies.name];
+				if (dexSpecies.otherFormes) validSpecies = validSpecies.concat(dexSpecies.otherFormes);
+				return i.itemUser.some(v => validSpecies.includes(v));
+			} else if (extraArg?.length) {
+				return extraArg.some(poke => {
+					const dexSpecies = Dex.species.get(poke.species);
+					let validSpecies = [dexSpecies.name];
+					if (dexSpecies.otherFormes) validSpecies = validSpecies.concat(dexSpecies.otherFormes);
+					return i.itemUser?.some(v => validSpecies.includes(v));
+				});
+			}
+		} else {
+			if (i.zMove) return true;
+			return Object.keys(i).some(k => typeof (i as any)[k] === 'function');
+		}
+		return false;
+	});
 
-        // Fisher-Yates Shuffle
-        for (let i = all.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [all[i], all[j]] = [all[j], all[i]];
-        }
+	// Fisher-Yates Shuffle
+	for (let i = all.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[all[i], all[j]] = [all[j], all[i]];
+	}
 
-        const items: string[] = [];
-        while (items.length < quantity) {
-                const plausibleItem = all.shift();
-                if (plausibleItem) {
-                        items.push(plausibleItem.name);
-                } else {
-                        break;
-                }
-        }
-        return items;
+	const items: string[] = [];
+	while (items.length < quantity) {
+		const plausibleItem = all.shift();
+		if (plausibleItem) {
+			items.push(plausibleItem.name);
+		} else {
+			break;
+		}
+	}
+	return items;
 }
 
 export function rollShop(team: PokemonSet[], streak: number): string[] {
-        const rotationalShop: string[] = [];
+	const rotationalShop: string[] = [];
 
-        function checkForEvolution(pokemon: PokemonSet, itemName: string): boolean {
-                const evoList = Dex.species.get(pokemon.species).evos;
-                if (!evoList) return false;
-                for (const newEvo of evoList) {
-                        if (Dex.species.get(newEvo).evoType === 'useItem' &&
-                                Dex.species.get(newEvo).evoItem === itemName) {
-                                return true;
-                        }
-                }
-                return false;
-        }
+	function checkForEvolution(pokemon: PokemonSet, itemName: string): boolean {
+		const evoList = Dex.species.get(pokemon.species).evos;
+		if (!evoList) return false;
+		for (const newEvo of evoList) {
+			if (Dex.species.get(newEvo).evoType === 'useItem' &&
+				Dex.species.get(newEvo).evoItem === itemName) {
+				return true;
+			}
+		}
+		return false;
+	}
 
-        let viableItems: string[] = [];
+	let viableItems: string[] = [];
 
-        for (const index of Object.keys(ROTATIONAL_ITEM_POOL)) {
-                const poolItem = ROTATIONAL_ITEM_POOL[index];
-                if (poolItem.minFloor > streak) continue;
+	for (const index of Object.keys(ROTATIONAL_ITEM_POOL)) {
+		const poolItem = ROTATIONAL_ITEM_POOL[index];
+		if (poolItem.minFloor > streak) continue;
 
-                const dexItem = Dex.items.get(poolItem.name);
+		const dexItem = Dex.items.get(poolItem.name);
 
-                if (poolItem.type === 'item') {
-                        if (dexItem.isNonstandard === 'CAP') continue;
-                        const isViable = dexItem.itemUser || dexItem.zMove || Object.keys(dexItem).some(k => {
-                                return typeof (dexItem as any)[k] === 'function';
-                        });
-                        if (dexItem.itemUser && !team.some(p => dexItem.itemUser?.includes(p.species))) continue;
-                        if (!isViable) continue;
-                } else if (poolItem.type === 'evolveItem') {
-                        // only include evolution items if team member can use them
-                        if (!team.some(p => checkForEvolution(p, dexItem.name))) continue;
-                }
+		if (poolItem.type === 'item') {
+			if (dexItem.isNonstandard === 'CAP') continue;
+			const isViable = dexItem.itemUser || dexItem.zMove || Object.keys(dexItem).some(k => {
+				return typeof (dexItem as any)[k] === 'function';
+			});
+			if (dexItem.itemUser && !team.some(p => dexItem.itemUser?.includes(p.species))) continue;
+			if (!isViable) continue;
+		} else if (poolItem.type === 'evolveItem') {
+			// only include evolution items if team member can use them
+			if (!team.some(p => checkForEvolution(p, dexItem.name))) continue;
+		}
 
-                viableItems.push(index);
-        }
+		viableItems.push(index);
+	}
 
-        while (rotationalShop.length < 5) {
-                let potential: string[] = [];
-                const randomNo = Math.floor(Math.random() * 100);
+	while (rotationalShop.length < 5) {
+		let potential: string[] = [];
+		const randomNo = Math.floor(Math.random() * 100);
 
-                // shop weightings: 70% items, 20% tms, 10% evolution items
-                if (randomNo > 30) {
-                        potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'item');
-                } else if (randomNo > 10) {
-                        potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'TM');
-                        if (!potential.length) {
-                                potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'item');
-                        }
-                } else {
-                        potential = viableItems.filter(item =>
-                                ROTATIONAL_ITEM_POOL[item].type === 'evolveItem' ||
-                                Dex.items.get(item)?.itemUser
-                        );
-                        if (!potential.length) {
-                                potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'item');
-                        }
-                }
+		// shop weightings: 70% items, 20% tms, 10% evolution items
+		if (randomNo > 30) {
+			potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'item');
+		} else if (randomNo > 10) {
+			potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'TM');
+			if (!potential.length) {
+				potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'item');
+			}
+		} else {
+			potential = viableItems.filter(item =>
+				ROTATIONAL_ITEM_POOL[item].type === 'evolveItem' ||
+				Dex.items.get(item)?.itemUser
+			);
+			if (!potential.length) {
+				potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'item');
+			}
+		}
 
-                for (let i = potential.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [potential[i], potential[j]] = [potential[j], potential[i]];
-                }
-                const winner = potential.pop();
-                if (!winner) break;
+		for (let i = potential.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[potential[i], potential[j]] = [potential[j], potential[i]];
+		}
+		const winner = potential.pop();
+		if (!winner) break;
 
-                rotationalShop.push(winner);
-                viableItems = viableItems.filter(e => e !== winner);
-        }
+		rotationalShop.push(winner);
+		viableItems = viableItems.filter(e => e !== winner);
+	}
 
-        return rotationalShop;
+	return rotationalShop;
 }

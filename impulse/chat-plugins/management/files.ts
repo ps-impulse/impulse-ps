@@ -73,7 +73,7 @@ export const commands: Chat.ChatCommands = {
 			throw new Chat.ErrorMessage(`Failed to delete file: ${message}`);
 		}
 	},
-	
+
 	async filemove(target, room, user): Promise<void> {
 		if (!this.runBroadcast()) return;
 		this.checkCan('bypassall');

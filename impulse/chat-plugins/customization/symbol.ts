@@ -197,7 +197,7 @@ export const commands: Chat.ChatCommands = {
 				`<b>/symbol delete [user]</b> - Remove custom symbol. Requires: ~<hr>` +
 				`<center><small>Blocked symbols: ${BLOCKED_SYMBOLS.join(' ')}</small></center></div>`
 			);
-		},		
+		},
 	},
 
 	symbolhelp: 'symbol.help',

@@ -69,7 +69,6 @@ const formatSizeDisplay = (size: number) => (size !== DEFAULT_ICON_SIZE ? ` (${s
 
 const updateIcons = (): void => {
 	try {
-
 		const cssRules = Object.entries(data).map(([userId, entry]) => {
 			const size = entry.size || DEFAULT_ICON_SIZE;
 			return `[id$="-userlist-user-${userId}"] { background: url("${entry.url}") right no-repeat !important; background-size: ${size}px!important;}`;

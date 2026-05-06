@@ -203,13 +203,13 @@ export const commands: Chat.ChatCommands = {
 				`<b>/symbolcolor delete [user]</b> - Remove color. Requires: ~<hr>` +
 				`<center><small>Format: #FF5733 or #F73</small></center></div>`
 			);
-		},		
+		},
 
 		''(target: string, room: Room, user: User) {
 			this.parse('/symbolcolor help');
 		},
 	},
-	
+
 	sc: 'symbolcolor',
 	symbolcolorhelp: 'symbolcolor.help',
 	schelp: 'symbolcolor.help',

@@ -6,11 +6,10 @@ export interface BossData {
 
 export const BOSSES: Record<string, Record<string, BossData>> = {
 	'200': {
-        'Brock': {
-            pool: [
-					{ species: 'eternatus' }
-					]
-		  }
-	}
+		'Brock': {
+			pool: [
+				{ species: 'eternatus' },
+			],
+		},
+	},
 };
-

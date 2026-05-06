@@ -122,7 +122,7 @@ export const commands: Chat.ChatCommands = {
 			`<b>/poof off</b> - Disable the use of the /poof command. Requires: ~<hr></div>`
 		);
 	},
-	
+
 	d: 'poof',
 	cpoof: 'poof',
 

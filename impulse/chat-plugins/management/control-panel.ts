@@ -23,16 +23,16 @@ function refreshControlPanel(user: User): void {
 	}
 }
 
-interface IconEntry { url: string; size: number; setBy: string; createdAt: number; updatedAt: number; }
-interface IconData { [userid: string]: IconEntry; }
+interface IconEntry { url: string; size: number; setBy: string; createdAt: number; updatedAt: number }
+interface IconData { [userid: string]: IconEntry }
 
-interface CustomColorsData { [userid: string]: string; }
+interface CustomColorsData { [userid: string]: string }
 
-interface SymbolColorEntry { color: string; setBy: string; createdAt: number; updatedAt: number; }
-interface SymbolColorData { [userid: string]: SymbolColorEntry; }
+interface SymbolColorEntry { color: string; setBy: string; createdAt: number; updatedAt: number }
+interface SymbolColorData { [userid: string]: SymbolColorEntry }
 
-interface CustomSymbolEntry { symbol: string; setBy: string; createdAt: number; updatedAt: number; }
-interface CustomSymbolData { [userid: string]: CustomSymbolEntry; }
+interface CustomSymbolEntry { symbol: string; setBy: string; createdAt: number; updatedAt: number }
+interface CustomSymbolData { [userid: string]: CustomSymbolEntry }
 
 async function loadJSON<T>(filePath: string): Promise<T> {
 	try {
@@ -57,12 +57,12 @@ function renderColorSwatch(color: string): string {
 function createHeader(title: string): string {
 	return (
 		'<div style="' +
-			'display: flex; align-items: center;' +
-			'border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 14px;' +
+		'display: flex; align-items: center;' +
+		'border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 14px;' +
 		'">' +
-			'<strong style="font-size: 1.2em;">⚙️ Control Panel — ' + title + '</strong>' +
-			// Added margin-left: auto; here to ensure it pushes to the far right
-			'<button class="button" name="send" value="/controlpanel view home" style="margin-left: auto;">← Back to Control Panel</button>' +
+		'<strong style="font-size: 1.2em;">⚙️ Control Panel — ' + title + '</strong>' +
+		// Added margin-left: auto; here to ensure it pushes to the far right
+		'<button class="button" name="send" value="/controlpanel view home" style="margin-left: auto;">← Back to Control Panel</button>' +
 		'</div>'
 	);
 }
@@ -95,24 +95,24 @@ function renderHome(user: User): string {
 
 	const cardHtml = cards.map(c =>
 		'<div style="' +
-			'background: rgba(216, 238, 245, 0.6); border: 1px solid #ccc; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;' +
-			'display: flex; align-items: center; gap: 14px;' +
+		'background: rgba(216, 238, 245, 0.6); border: 1px solid #ccc; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;' +
+		'display: flex; align-items: center; gap: 14px;' +
 		'">' +
-			'<div style="flex: 1; color: black;">' +
-				'<strong>' + c.label + '</strong>' +
-				'<div style="font-size: 0.9em; color: black;">' + c.desc + '</div>' +
-			'</div>' +
-			'<button class="button" name="send" value="/controlpanel view ' + c.view + '" style="margin-left: auto;">Open →</button>' +
+		'<div style="flex: 1; color: black;">' +
+		'<strong>' + c.label + '</strong>' +
+		'<div style="font-size: 0.9em; color: black;">' + c.desc + '</div>' +
+		'</div>' +
+		'<button class="button" name="send" value="/controlpanel view ' + c.view + '" style="margin-left: auto;">Open →</button>' +
 		'</div>'
 	).join('');
 
 	return (
 		'<div class="pad">' +
-			'<div style="border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 14px;">' +
-				'<strong style="font-size: 1.2em;">⚙️ Control Panel</strong>' +
-			'</div>' +
-			'<p style="color: #555; margin-bottom: 14px;">Welcome, ' + Impulse.nameColor(user.name, true, false) + '. Select a section to manage.</p>' +
-			cardHtml +
+		'<div style="border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 14px;">' +
+		'<strong style="font-size: 1.2em;">⚙️ Control Panel</strong>' +
+		'</div>' +
+		'<p style="color: #555; margin-bottom: 14px;">Welcome, ' + Impulse.nameColor(user.name, true, false) + '. Select a section to manage.</p>' +
+		cardHtml +
 		'</div>'
 	);
 }
@@ -190,9 +190,9 @@ async function renderSymbols(user: User): Promise<string> {
 
 function renderAvatars(user: User): string {
 	const header = createHeader('Custom Avatars');
-	
+
 	const allAvatars = Users.Avatars?.avatars || {};
-	
+
 	const entries = Object.entries(allAvatars).filter(([userid, data]) => {
 		const filename = (data as any).allowed?.[0];
 		return filename && !filename.startsWith('#') && !/^\d+$/.test(filename);
@@ -200,14 +200,14 @@ function renderAvatars(user: User): string {
 
 	if (!entries.length) return `<div class="pad">${header}<p>No custom avatars set.</p></div>`;
 
-	let rawBaseUrl = Config.avatarUrl || 'impulse-ps.mooo.com/avatars/';
+	const rawBaseUrl = Config.avatarUrl || 'impulse-ps.mooo.com/avatars/';
 	const baseUrl = rawBaseUrl.startsWith('http') || rawBaseUrl.startsWith('//') ? rawBaseUrl : `//${rawBaseUrl}`;
 	const cacheBuster = Date.now();
 
 	const rows = entries.map(([userid, data]) => {
 		const filename = (data as any).allowed[0];
 		const imgUrl = `${baseUrl}${filename}?v=${cacheBuster}`;
-		
+
 		return [
 			Impulse.nameColor(userid, true, false),
 			`<img src="${imgUrl}" width="80" height="80" style="object-fit: contain; background: rgba(0,0,0,0.1); border-radius: 4px;" />`,
@@ -225,24 +225,24 @@ export const pages: Chat.PageTable = {
 		const view = panelViews.get(user.id) || 'home';
 
 		switch (view) {
-			case 'icons':
-				this.title = 'Control Panel — Icons';
-				return await renderIcons(user);
-			case 'colors':
-				this.title = 'Control Panel — Colors';
-				return await renderColors(user);
-			case 'symbolcolors':
-				this.title = 'Control Panel — Symbol Colors';
-				return await renderSymbolColors(user);
-			case 'symbols':
-				this.title = 'Control Panel — Symbols';
-				return await renderSymbols(user);
-			case 'avatars':
-				this.title = 'Control Panel — Avatars';
-				return renderAvatars(user);
-			default:
-				this.title = 'Control Panel';
-				return renderHome(user);
+		case 'icons':
+			this.title = 'Control Panel — Icons';
+			return await renderIcons(user);
+		case 'colors':
+			this.title = 'Control Panel — Colors';
+			return await renderColors(user);
+		case 'symbolcolors':
+			this.title = 'Control Panel — Symbol Colors';
+			return await renderSymbolColors(user);
+		case 'symbols':
+			this.title = 'Control Panel — Symbols';
+			return await renderSymbols(user);
+		case 'avatars':
+			this.title = 'Control Panel — Avatars';
+			return renderAvatars(user);
+		default:
+			this.title = 'Control Panel';
+			return renderHome(user);
 		}
 	},
 };

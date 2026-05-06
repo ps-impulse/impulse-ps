@@ -62,13 +62,13 @@ const loadLogs = async (): Promise<void> => {
 
 const cleanOldLogs = (roomid: string): void => {
 	if (!logsData[roomid]) return;
-	
+
 	const now = Date.now();
 	const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 	const initialLength = logsData[roomid].length;
-	
+
 	logsData[roomid] = logsData[roomid].filter(log => (now - log.timestamp) <= sevenDaysMs);
-  
+
 	if (logsData[roomid].length !== initialLength) {
 		saveLogs();
 	}
@@ -87,7 +87,7 @@ export const commands: ChatCommands = {
 			}
 
 			const roomData = data[room.roomid];
-			if (!roomData || !roomData.enabled) {
+			if (!roomData?.enabled) {
 				return this.errorReply(`The shop is not enabled for this room.`);
 			}
 
@@ -123,7 +123,7 @@ export const commands: ChatCommands = {
 			} else {
 				data[room.roomid].enabled = true;
 			}
-			
+
 			saveData();
 			this.sendReply(`|raw|<strong>Room Shop</strong> has been <strong>enabled</strong> for this room.`);
 		},
@@ -159,7 +159,7 @@ export const commands: ChatCommands = {
 			} else {
 				data[room.roomid].bank = targetId;
 			}
-			
+
 			saveData();
 			this.sendReply(`|raw|The room shop bank for this room has been set to <strong>${Impulse.nameColor(target, true, true)}</strong>.`);
 		},
@@ -171,7 +171,7 @@ export const commands: ChatCommands = {
 			this.checkCan('roommod');
 
 			const roomData = data[room.roomid];
-			if (!roomData || !roomData.enabled) {
+			if (!roomData?.enabled) {
 				return this.errorReply(`The shop must be enabled by a global admin first using /roomshop enable.`);
 			}
 
@@ -203,7 +203,7 @@ export const commands: ChatCommands = {
 			this.checkCan('roommod');
 
 			const roomData = data[room.roomid];
-			if (!roomData || !roomData.enabled) {
+			if (!roomData?.enabled) {
 				return this.errorReply(`The shop must be enabled by a global admin first.`);
 			}
 
@@ -227,7 +227,7 @@ export const commands: ChatCommands = {
 			this.checkCan('roommod');
 
 			const roomData = data[room.roomid];
-			if (!roomData || !roomData.enabled) {
+			if (!roomData?.enabled) {
 				return this.errorReply(`The shop must be enabled by a global admin first.`);
 			}
 
@@ -258,7 +258,7 @@ export const commands: ChatCommands = {
 			}
 
 			const roomData = data[room.roomid];
-			if (!roomData || !roomData.enabled) {
+			if (!roomData?.enabled) {
 				return this.errorReply(`The shop is not enabled for this room.`);
 			}
 
@@ -281,7 +281,7 @@ export const commands: ChatCommands = {
 
 			const bankBalance = getBalance(roomData.bank);
 			setBalance(roomData.bank, bankBalance + item.cost);
-			
+
 			if (!logsData[room.roomid]) logsData[room.roomid] = [];
 			logsData[room.roomid].push({
 				user: user.name,
@@ -297,7 +297,7 @@ export const commands: ChatCommands = {
 			if (!room || room.roomid.startsWith('cmd-') || room.roomid === 'global') {
 				return this.errorReply(`This command must be used in a chat room.`);
 			}
-			
+
 			this.checkCan('roommod');
 			cleanOldLogs(room.roomid);
 
@@ -306,18 +306,18 @@ export const commands: ChatCommands = {
 			if (!roomLogs.length) {
 				return this.sendReplyBox(`<div style="max-height: 350px; overflow-y: auto;"><center><strong><h4>Room Shop Logs</h4></strong><hr></center>No recent shop logs found for this room.</div>`);
 			}
-			
+
 			const sortedLogs = [...roomLogs].sort((a, b) => b.timestamp - a.timestamp);
 
 			let html = `<div style="max-height: 350px; overflow-y: auto;">`;
 			html += `<center><strong><h4>Room Shop Logs</h4></strong><hr></center>`;
-			
+
 			const formattedLogs = sortedLogs.map(log => {
 				const dateObj = new Date(log.timestamp);
 				const day = String(dateObj.getDate()).padStart(2, '0');
 				const month = String(dateObj.getMonth() + 1).padStart(2, '0');
 				const year = dateObj.getFullYear();
-				
+
 				return `<strong>${Chat.escapeHTML(log.user)}</strong> purchased <strong>${Chat.escapeHTML(log.item)}</strong> on ${day}-${month}-${year}`;
 			});
 
