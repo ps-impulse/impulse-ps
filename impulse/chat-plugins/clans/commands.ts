@@ -138,7 +138,7 @@ export const adminCommands: Chat.ChatCommands = {
 
 		const ownerId = clan.owner;
 		const ownerUser = Users.getExact(ownerId);
-		const chatRoom = Rooms.get(clan.chatRoom);
+		const chatRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 
 		try {
 			if (chatRoom) {
@@ -870,7 +870,7 @@ export const clanInfoCommands: Chat.ChatCommands = {
 		try {
 			await Clans.updateOne({ _id: clanId }, { $set: { desc: description } });
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				clanRoom.settings.desc = description;
 				clanRoom.saveSettings();
@@ -916,7 +916,7 @@ export const clanInfoCommands: Chat.ChatCommands = {
 		try {
 			await Clans.updateOne({ _id: clanId }, { $set: { tag } });
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				clanRoom.add(`|html|<div class="infobox"><center>${esc(user.name)} updated the clan tag from "${esc(oldTag)}" to "${esc(tag)}".</center></div>`).update();
 			}
@@ -959,7 +959,7 @@ export const clanInfoCommands: Chat.ChatCommands = {
 		try {
 			await Clans.updateOne({ _id: clanId }, { $set: { memberOfTheWeek: targetId } });
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				if (oldMotw && oldMotw !== targetId && clan.members[oldMotw]) {
 					const oldMotwRole = clan.members[oldMotw].role;
@@ -1017,7 +1017,7 @@ export const clanInfoCommands: Chat.ChatCommands = {
 		try {
 			await Clans.updateOne({ _id: clanId }, { $set: { icon: iconUrl } });
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				clanRoom.add(`|html|<div class="infobox"><center>${esc(user.name)} updated the clan icon.</center></div>`).update();
 			}
@@ -1086,7 +1086,7 @@ export const memberCommands: Chat.ChatCommands = {
 				$pull: { invites: clanId },
 			});
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				clanRoom.auth.set(userId, '+');
 				clanRoom.saveSettings();
@@ -1122,7 +1122,7 @@ export const memberCommands: Chat.ChatCommands = {
 			await Clans.updateOne({ _id: clanId }, { $unset: { [`members.${userId}`]: "" } });
 			await UserClans.updateOne({ _id: userId }, { $unset: { memberOf: 1 } });
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				clanRoom.auth.delete(userId);
 				clanRoom.saveSettings();
@@ -1172,7 +1172,7 @@ export const memberCommands: Chat.ChatCommands = {
 			await Clans.updateOne({ _id: clanId }, { $unset: { [`members.${targetId}`]: "" } });
 			await UserClans.updateOne({ _id: targetId }, { $unset: { memberOf: 1 } });
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				clanRoom.auth.delete(targetId);
 				clanRoom.saveSettings();
@@ -1246,7 +1246,7 @@ export const memberCommands: Chat.ChatCommands = {
 				this.sendReply(`'${esc(targetId)}' is offline and will see the invite when they log in.`);
 			}
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				clanRoom.add(`|html|<div class="infobox"><center>${esc(user.name)} invited ${esc(targetId)} to the clan.</center></div>`).update();
 			}
@@ -1290,7 +1290,7 @@ export const memberCommands: Chat.ChatCommands = {
 				targetUser.popup(`|html|<div class="infobox">Your invite to join the clan <b>${esc(clan.name)}</b> has been revoked by ${esc(user.name)}.</div>`);
 			}
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				clanRoom.add(`|html|<div class="infobox"><center>${esc(user.name)} revoked ${esc(targetId)}'s invite to the clan.</center></div>`).update();
 			}
@@ -1409,7 +1409,7 @@ export const memberCommands: Chat.ChatCommands = {
 
 			// Invite-only toggle is not logged — minor setting, low audit value
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				const statusText = newInviteOnlyStatus ? 'is now invite-only' : 'is now open to all users';
 				clanRoom.add(`|html|<div class="infobox"><center>${esc(user.name)} changed the clan setting: The clan ${statusText}.</center></div>`).update();
@@ -1520,7 +1520,7 @@ export const rankCommands: Chat.ChatCommands = {
 				{ $set: { [`members.${targetId}.role`]: newRole } }
 			);
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				const newRoomRank = CLAN_ROLE_TO_ROOM_RANK[newRole] || '+';
 				clanRoom.auth.set(targetId, newRoomRank);
@@ -1596,7 +1596,7 @@ export const rankCommands: Chat.ChatCommands = {
 				{ $set: { [`members.${targetId}.role`]: newRole } }
 			);
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				const newRoomRank = CLAN_ROLE_TO_ROOM_RANK[newRole] || '+';
 				clanRoom.auth.set(targetId, newRoomRank);
@@ -1650,7 +1650,7 @@ export const rankCommands: Chat.ChatCommands = {
 				}
 			);
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				clanRoom.auth.set(targetId, '#');
 				clanRoom.auth.set(actorId, '@');
