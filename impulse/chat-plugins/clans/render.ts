@@ -80,8 +80,10 @@ export async function renderMainView(user: User): Promise<string> {
 }
 
 export async function renderClanProfile(clanId: string, user: User, room: Room): Promise<string> {
-	const clan = await getClanById(clanId, room as any);
-	if (!clan) return `<div class="pr"><div style="padding: 14px">Clan not found.</div></div>`;
+	if (!clanId) return `<div class="pr"><div style="padding: 14px">No clan specified.</div></div>`;
+
+	const clan = await Clans.findOne({ _id: clanId as ID });
+	if (!clan) return `<div class="pr"><div style="padding: 14px">This clan no longer exists.</div></div>`;
 
 	const totalMembers = Object.keys(clan.members).length;
 	const clanAge = toDurationString(Date.now() - clan.created);
@@ -113,8 +115,6 @@ export async function renderClanProfile(clanId: string, user: User, room: Room):
 
 	buf += `<div class="pr-actions">`;
 	buf += renderBtn(`/clan view members ${clan._id}`, 'Members', 'pr-btn primary');
-	// buf += renderBtn(`/clan view logs ${clan._id}`, 'Logs', 'pr-btn');
-	// buf += renderBtn(`/clan view wars ${clan._id}`, 'Wars', 'pr-btn');
 	buf += `</div></div></div>`;
 	return buf;
 }
@@ -160,8 +160,10 @@ export async function renderClanList(page: number): Promise<string> {
 }
 
 export async function renderMembers(clanId: string, user: User, room: Room): Promise<string> {
-	const clan = await getClanById(clanId, room as any);
-	if (!clan) return `<div class="pr"><div style="padding: 14px">Clan not found.</div></div>`;
+	if (!clanId) return `<div class="pr"><div style="padding: 14px">No clan specified.</div></div>`;
+
+	const clan = await Clans.findOne({ _id: clanId as ID });
+	if (!clan) return `<div class="pr"><div style="padding: 14px">This clan no longer exists.</div></div>`;
 
 	const ROLE_LEVELS: Record<string, number> = { owner: 100, leader: 50, officer: 25, member: 10 };
 	const memberEntries = Object.entries(clan.members).sort((a, b) => {
