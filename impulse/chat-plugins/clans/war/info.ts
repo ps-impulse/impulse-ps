@@ -9,7 +9,7 @@ import { to } from '../utils';
 import { getClanById } from '../helpers/context';
 import { displayElo } from '../helpers/elo';
 import { generateWarStats, generateHeadToHeadRecord } from '../helpers/html';
-import { Table } from '../../utils';
+import { Table } from '../../../impulse-utils';
 import { DEFAULT_PAGE_SIZE, DEFAULT_LOG_LIMIT } from '../constants';
 
 export const infoWarCommands: Chat.ChatCommands = {
