@@ -1,10 +1,7 @@
 /*
- * Pokemon Showdown - Impulse Server
- * Clans FS Database Layer
- * @author PrinceSky-Git
- *
  * File layout:
- *   impulse/db/clans/{clanid}.json        — full clan document (members, settings, logs, points logs, battle logs)
+ *   impulse/db/clans/{clanid}.json        — clan document (members, settings)
+ *   impulse/db/clans/logs/{clanid}.json   — clan activity, points, and battle logs
  *   impulse/db/clans/wars/{warid}.json    — one file per war
  *   impulse/db/clans/users.json           — userid → { memberOf, invites }
  *   impulse/db/clans/bans.json            — { [userid]: true }
@@ -21,8 +18,6 @@ import type {
 	ClanWar,
 } from './interface';
 
-// ─── Doc types ────────────────────────────────────────────────────────────────
-
 export type ClanDoc = Omit<Clan, 'id'> & { _id: ID };
 export type UserClanDoc = UserClanInfo & { _id: ID };
 export type ClanLogDoc = ClanLog & { clanId: ID };
@@ -30,8 +25,6 @@ export type ClanPointsLogDoc = ClanPointsLogEntry & { clanId: ID };
 export type ClanBanDoc = { _id: ID; banned: boolean };
 export type ClanBattleLogDoc = ClanBattleLogEntry;
 export type ClanWarDoc = ClanWar;
-
-// ─── Clan stats snapshot ──────────────────────────────────────────────────────
 
 export interface ClanStatEntry {
 	name: string;
@@ -46,32 +39,20 @@ export interface ClanStatEntry {
 	lastWarChallenge: number;
 }
 
-// ─── Full clan file shape ─────────────────────────────────────────────────────
-
-interface ClanFile {
-	clan: ClanDoc;
-	logs: ClanLogDoc[];
-	pointsLogs: ClanPointsLogDoc[];
-	battleLogs: ClanBattleLogDoc[];
-}
-
-// ─── Paths ────────────────────────────────────────────────────────────────────
-
 const BASE = 'impulse/db/clans';
 const WARS_DIR = `${BASE}/wars`;
+const LOGS_DIR = `${BASE}/logs`;
 const USERS_PATH = `${BASE}/users.json`;
 const BANS_PATH = `${BASE}/bans.json`;
 const STATS_PATH = `${BASE}/clan-stats.json`;
 
 const clanPath = (id: ID) => `${BASE}/${id}.json`;
 const warPath = (id: ID) => `${WARS_DIR}/${id}.json`;
-
-// ─── Directory bootstrap ──────────────────────────────────────────────────────
+const logPath = (id: ID) => `${LOGS_DIR}/${id}.json`;
 
 FS(BASE).mkdirIfNonexistentSync();
 FS(WARS_DIR).mkdirIfNonexistentSync();
-
-// ─── Low-level FS helpers ─────────────────────────────────────────────────────
+FS(LOGS_DIR).mkdirIfNonexistentSync();
 
 function readJson<T>(path: string, fallback: T): T {
 	try {
@@ -92,13 +73,48 @@ function writeJson(path: string, data: unknown): Promise<void> {
 	});
 }
 
-// ─── Clan file helpers ────────────────────────────────────────────────────────
+interface ClanFile {
+	clan: ClanDoc;
+}
+
+interface ClanLogsFile {
+	logs: ClanLogDoc[];
+	pointsLogs: ClanPointsLogDoc[];
+	battleLogs: ClanBattleLogDoc[];
+}
+
+function readLogsFile(id: ID): ClanLogsFile {
+	const raw = FS(logPath(id)).readIfExistsSync();
+	if (!raw) return { logs: [], pointsLogs: [], battleLogs: [] };
+	try {
+		return JSON.parse(raw) as ClanLogsFile;
+	} catch {
+		return { logs: [], pointsLogs: [], battleLogs: [] };
+	}
+}
+
+function writeLogsFile(id: ID, logs: ClanLogsFile): Promise<void> {
+	return writeJson(logPath(id), logs);
+}
 
 function readClanFile(id: ID): ClanFile | null {
 	const raw = FS(clanPath(id)).readIfExistsSync();
 	if (!raw) return null;
 	try {
-		return JSON.parse(raw) as ClanFile;
+		const data = JSON.parse(raw);
+		// Migration: Move logs to separate file if they exist in the main clan file
+		if (data.logs || data.pointsLogs || data.battleLogs) {
+			const logs: ClanLogsFile = {
+				logs: data.logs || [],
+				pointsLogs: data.pointsLogs || [],
+				battleLogs: data.battleLogs || [],
+			};
+			if (!FS(logPath(id)).existsSync()) {
+				FS(logPath(id)).writeSync(JSON.stringify(logs, null, '\t'));
+			}
+			return { clan: data.clan };
+		}
+		return data as ClanFile;
 	} catch {
 		return null;
 	}
@@ -121,8 +137,6 @@ function readAllClanFiles(): ClanFile[] {
 	} catch {}
 	return files;
 }
-
-// ─── Clan stats sync ──────────────────────────────────────────────────────────
 
 export function readClanStats(): Record<ID, ClanStatEntry> {
 	return readJson<Record<ID, ClanStatEntry>>(STATS_PATH, {} as Record<ID, ClanStatEntry>);
@@ -150,8 +164,6 @@ export async function removeClanStats(id: ID): Promise<void> {
 	delete stats[id];
 	await writeJson(STATS_PATH, stats);
 }
-
-// ─── War file helpers ─────────────────────────────────────────────────────────
 
 function readWarFile(id: ID): ClanWarDoc | null {
 	const raw = FS(warPath(id)).readIfExistsSync();
@@ -183,8 +195,6 @@ function readAllWarFiles(): ClanWarDoc[] {
 	return wars;
 }
 
-// ─── Users / Bans helpers ─────────────────────────────────────────────────────
-
 type UsersData = Record<string, UserClanInfo>;
 type BansData = Record<string, boolean>;
 
@@ -193,13 +203,9 @@ const writeUsers = (d: UsersData): Promise<void> => writeJson(USERS_PATH, d);
 const readBans = (): BansData => readJson<BansData>(BANS_PATH, {});
 const writeBans = (d: BansData): Promise<void> => writeJson(BANS_PATH, d);
 
-// ─── War ID generation ────────────────────────────────────────────────────────
-
 function generateWarId(): ID {
 	return `war_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` as ID;
 }
-
-// ─── Filter / update helpers ──────────────────────────────────────────────────
 
 type FilterQuery<T> = Partial<T> & Record<string, any>;
 
@@ -354,8 +360,6 @@ function sortDocs<T extends Record<string, any>>(docs: T[], sortObj: Record<stri
 	});
 }
 
-// ─── Collection interface ─────────────────────────────────────────────────────
-
 interface FindOptions {
 	limit?: number;
 	skip?: number;
@@ -377,8 +381,6 @@ interface Collection<T extends Record<string, any>> {
 	upsert(filter: FilterQuery<T>, update: Record<string, any>): Promise<void>;
 	countDocuments(filter: FilterQuery<T>): Promise<number>;
 }
-
-// ─── Clans ────────────────────────────────────────────────────────────────────
 
 const ClansCollection: Collection<ClanDoc> = {
 	async findOne(filter) {
@@ -413,7 +415,8 @@ const ClansCollection: Collection<ClanDoc> = {
 
 	async insertOne(doc) {
 		const clan = doc as ClanDoc;
-		await writeClanFile({ clan, logs: [], pointsLogs: [], battleLogs: [] });
+		await writeClanFile({ clan });
+		await writeLogsFile(clan._id, { logs: [], pointsLogs: [], battleLogs: [] });
 		await syncClanStats(clan);
 		return { insertedId: clan._id };
 	},
@@ -454,6 +457,7 @@ const ClansCollection: Collection<ClanDoc> = {
 		}
 		if (!id) return;
 		FS(clanPath(id)).unlinkIfExistsSync();
+		FS(logPath(id)).unlinkIfExistsSync();
 		await removeClanStats(id);
 	},
 
@@ -461,6 +465,7 @@ const ClansCollection: Collection<ClanDoc> = {
 		for (const file of readAllClanFiles()) {
 			if (matchesFilter(file.clan, filter)) {
 				FS(clanPath(file.clan._id)).unlinkIfExistsSync();
+				FS(logPath(file.clan._id)).unlinkIfExistsSync();
 				await removeClanStats(file.clan._id);
 			}
 		}
@@ -478,8 +483,6 @@ const ClansCollection: Collection<ClanDoc> = {
 		return count;
 	},
 };
-
-// ─── UserClans ────────────────────────────────────────────────────────────────
 
 const UserClansCollection: Collection<UserClanDoc> = {
 	async findOne(filter) {
@@ -601,20 +604,17 @@ const UserClansCollection: Collection<UserClanDoc> = {
 	},
 };
 
-// ─── ClanLogs ─────────────────────────────────────────────────────────────────
-
 const ClanLogsCollection: Collection<ClanLogDoc> = {
 	async findOne(filter) {
 		if (!filter.clanId) return null;
-		const file = readClanFile(filter.clanId as ID);
-		return file?.logs.find(l => matchesFilter(l, filter)) ?? null;
+		const logsFile = readLogsFile(filter.clanId as ID);
+		return logsFile.logs.find(l => matchesFilter(l, filter)) ?? null;
 	},
 
 	async find(filter, options = {}) {
 		if (!filter.clanId) return [];
-		const file = readClanFile(filter.clanId as ID);
-		if (!file) return [];
-		let results = file.logs.filter(l => matchesFilter(l, filter));
+		const logsFile = readLogsFile(filter.clanId as ID);
+		let results = logsFile.logs.filter(l => matchesFilter(l, filter));
 		if (options.sort) results = sortDocs(results, options.sort);
 		if (options.skip) results = results.slice(options.skip);
 		if (options.limit) results = results.slice(0, options.limit);
@@ -623,10 +623,9 @@ const ClanLogsCollection: Collection<ClanLogDoc> = {
 
 	async insertOne(doc) {
 		const d = doc as ClanLogDoc;
-		const file = readClanFile(d.clanId);
-		if (!file) return { insertedId: '' as ID };
-		file.logs.push(d);
-		await writeClanFile(file);
+		const logsFile = readLogsFile(d.clanId);
+		logsFile.logs.push(d);
+		await writeLogsFile(d.clanId, logsFile);
 		return { insertedId: '' as ID };
 	},
 
@@ -635,23 +634,34 @@ const ClanLogsCollection: Collection<ClanLogDoc> = {
 
 	async deleteOne(filter) {
 		if (!filter.clanId) return;
-		const file = readClanFile(filter.clanId as ID);
-		if (!file) return;
-		const idx = file.logs.findIndex(l => matchesFilter(l, filter));
-		if (idx !== -1) { file.logs.splice(idx, 1); await writeClanFile(file); }
+		const logsFile = readLogsFile(filter.clanId as ID);
+		const idx = logsFile.logs.findIndex(l => matchesFilter(l, filter));
+		if (idx !== -1) {
+			logsFile.logs.splice(idx, 1);
+			await writeLogsFile(filter.clanId as ID, logsFile);
+		}
 	},
 
 	async deleteMany(filter) {
 		if (filter.clanId) {
-			const file = readClanFile(filter.clanId as ID);
-			if (!file) return;
-			file.logs = file.logs.filter(l => !matchesFilter(l, filter));
-			await writeClanFile(file);
+			const logsFile = readLogsFile(filter.clanId as ID);
+			const before = logsFile.logs.length;
+			logsFile.logs = logsFile.logs.filter(l => !matchesFilter(l, filter));
+			if (logsFile.logs.length !== before) {
+				await writeLogsFile(filter.clanId as ID, logsFile);
+			}
 		} else {
-			for (const file of readAllClanFiles()) {
-				const before = file.logs.length;
-				file.logs = file.logs.filter(l => !matchesFilter(l, filter));
-				if (file.logs.length !== before) await writeClanFile(file);
+			// This is inefficient but deleteMany without clanId is rare for logs
+			for (const entry of FS(BASE).readdirSync()) {
+				if (!entry.endsWith('.json')) continue;
+				const id = entry.slice(0, -5) as ID;
+				if (['users', 'bans', 'clan-stats'].includes(id)) continue;
+				const logsFile = readLogsFile(id);
+				const before = logsFile.logs.length;
+				logsFile.logs = logsFile.logs.filter(l => !matchesFilter(l, filter));
+				if (logsFile.logs.length !== before) {
+					await writeLogsFile(id, logsFile);
+				}
 			}
 		}
 	},
@@ -660,26 +670,22 @@ const ClanLogsCollection: Collection<ClanLogDoc> = {
 
 	async countDocuments(filter) {
 		if (!filter.clanId) return 0;
-		const file = readClanFile(filter.clanId as ID);
-		if (!file) return 0;
-		return file.logs.filter(l => matchesFilter(l, filter)).length;
+		const logsFile = readLogsFile(filter.clanId as ID);
+		return logsFile.logs.filter(l => matchesFilter(l, filter)).length;
 	},
 };
-
-// ─── ClanPointsLogs ───────────────────────────────────────────────────────────
 
 const ClanPointsLogsCollection: Collection<ClanPointsLogDoc> = {
 	async findOne(filter) {
 		if (!filter.clanId) return null;
-		const file = readClanFile(filter.clanId as ID);
-		return file?.pointsLogs.find(l => matchesFilter(l, filter)) ?? null;
+		const logsFile = readLogsFile(filter.clanId as ID);
+		return logsFile.pointsLogs.find(l => matchesFilter(l, filter)) ?? null;
 	},
 
 	async find(filter, options = {}) {
 		if (!filter.clanId) return [];
-		const file = readClanFile(filter.clanId as ID);
-		if (!file) return [];
-		let results = file.pointsLogs.filter(l => matchesFilter(l, filter));
+		const logsFile = readLogsFile(filter.clanId as ID);
+		let results = logsFile.pointsLogs.filter(l => matchesFilter(l, filter));
 		if (options.sort) results = sortDocs(results, options.sort);
 		if (options.skip) results = results.slice(options.skip);
 		if (options.limit) results = results.slice(0, options.limit);
@@ -688,10 +694,9 @@ const ClanPointsLogsCollection: Collection<ClanPointsLogDoc> = {
 
 	async insertOne(doc) {
 		const d = doc as ClanPointsLogDoc;
-		const file = readClanFile(d.clanId);
-		if (!file) return { insertedId: '' as ID };
-		file.pointsLogs.push(d);
-		await writeClanFile(file);
+		const logsFile = readLogsFile(d.clanId);
+		logsFile.pointsLogs.push(d);
+		await writeLogsFile(d.clanId, logsFile);
 		return { insertedId: '' as ID };
 	},
 
@@ -700,23 +705,33 @@ const ClanPointsLogsCollection: Collection<ClanPointsLogDoc> = {
 
 	async deleteOne(filter) {
 		if (!filter.clanId) return;
-		const file = readClanFile(filter.clanId as ID);
-		if (!file) return;
-		const idx = file.pointsLogs.findIndex(l => matchesFilter(l, filter));
-		if (idx !== -1) { file.pointsLogs.splice(idx, 1); await writeClanFile(file); }
+		const logsFile = readLogsFile(filter.clanId as ID);
+		const idx = logsFile.pointsLogs.findIndex(l => matchesFilter(l, filter));
+		if (idx !== -1) {
+			logsFile.pointsLogs.splice(idx, 1);
+			await writeLogsFile(filter.clanId as ID, logsFile);
+		}
 	},
 
 	async deleteMany(filter) {
 		if (filter.clanId) {
-			const file = readClanFile(filter.clanId as ID);
-			if (!file) return;
-			file.pointsLogs = file.pointsLogs.filter(l => !matchesFilter(l, filter));
-			await writeClanFile(file);
+			const logsFile = readLogsFile(filter.clanId as ID);
+			const before = logsFile.pointsLogs.length;
+			logsFile.pointsLogs = logsFile.pointsLogs.filter(l => !matchesFilter(l, filter));
+			if (logsFile.pointsLogs.length !== before) {
+				await writeLogsFile(filter.clanId as ID, logsFile);
+			}
 		} else {
-			for (const file of readAllClanFiles()) {
-				const before = file.pointsLogs.length;
-				file.pointsLogs = file.pointsLogs.filter(l => !matchesFilter(l, filter));
-				if (file.pointsLogs.length !== before) await writeClanFile(file);
+			for (const entry of FS(BASE).readdirSync()) {
+				if (!entry.endsWith('.json')) continue;
+				const id = entry.slice(0, -5) as ID;
+				if (['users', 'bans', 'clan-stats'].includes(id)) continue;
+				const logsFile = readLogsFile(id);
+				const before = logsFile.pointsLogs.length;
+				logsFile.pointsLogs = logsFile.pointsLogs.filter(l => !matchesFilter(l, filter));
+				if (logsFile.pointsLogs.length !== before) {
+					await writeLogsFile(id, logsFile);
+				}
 			}
 		}
 	},
@@ -725,13 +740,10 @@ const ClanPointsLogsCollection: Collection<ClanPointsLogDoc> = {
 
 	async countDocuments(filter) {
 		if (!filter.clanId) return 0;
-		const file = readClanFile(filter.clanId as ID);
-		if (!file) return 0;
-		return file.pointsLogs.filter(l => matchesFilter(l, filter)).length;
+		const logsFile = readLogsFile(filter.clanId as ID);
+		return logsFile.pointsLogs.filter(l => matchesFilter(l, filter)).length;
 	},
 };
-
-// ─── ClanBans ─────────────────────────────────────────────────────────────────
 
 const ClanBansCollection: Collection<ClanBanDoc> = {
 	async findOne(filter) {
@@ -820,48 +832,47 @@ const ClanBansCollection: Collection<ClanBanDoc> = {
 	},
 };
 
-// ─── ClanBattleLogs ───────────────────────────────────────────────────────────
-
 const ClanBattleLogsCollection: Collection<ClanBattleLogDoc> = {
 	async findOne(filter) {
-		for (const file of readAllClanFiles()) {
-			const match = file.battleLogs.find(l => matchesFilter(l, filter));
+		for (const entry of FS(BASE).readdirSync()) {
+			if (!entry.endsWith('.json')) continue;
+			const id = entry.slice(0, -5) as ID;
+			if (['users', 'bans', 'clan-stats'].includes(id)) continue;
+			const logsFile = readLogsFile(id);
+			const match = logsFile.battleLogs.find(l => matchesFilter(l, filter));
 			if (match) return match;
 		}
 		return null;
 	},
 
 	async find(filter, options = {}) {
-		const directId = filter.winningClan ?? filter.losingClan;
-		let files: ClanFile[];
+		const directId = (filter.winningClan ?? filter.losingClan) as ID | undefined;
+		let clanIds: ID[] = [];
 
 		if (directId && typeof directId === 'string') {
-			const file = readClanFile(directId as ID);
-			files = file ? [file] : [];
+			clanIds = [directId];
 		} else if (filter.$or) {
 			const ids = new Set<ID>();
 			for (const clause of filter.$or as any[]) {
 				if (clause.winningClan) ids.add(clause.winningClan as ID);
 				if (clause.losingClan) ids.add(clause.losingClan as ID);
 			}
-			const seen = new Set<string>();
-			files = [];
-			for (const id of ids) {
-				const file = readClanFile(id);
-				if (file && !seen.has(file.clan._id)) {
-					seen.add(file.clan._id);
-					files.push(file);
-				}
-			}
+			clanIds = Array.from(ids);
 		} else {
-			files = readAllClanFiles();
+			for (const entry of FS(BASE).readdirSync()) {
+				if (!entry.endsWith('.json')) continue;
+				const id = entry.slice(0, -5) as ID;
+				if (['users', 'bans', 'clan-stats'].includes(id)) continue;
+				clanIds.push(id);
+			}
 		}
 
-		// Deduplicate by battleID since both clan files hold the same entry
+		// Deduplicate by battleID since both clan log files hold the same entry
 		const seen = new Set<string>();
 		let results: ClanBattleLogDoc[] = [];
-		for (const file of files) {
-			for (const entry of file.battleLogs) {
+		for (const id of clanIds) {
+			const logsFile = readLogsFile(id);
+			for (const entry of logsFile.battleLogs) {
 				if (matchesFilter(entry, filter) && !seen.has(entry.battleID)) {
 					seen.add(entry.battleID);
 					results.push(entry);
@@ -877,10 +888,11 @@ const ClanBattleLogsCollection: Collection<ClanBattleLogDoc> = {
 
 	async insertOne(doc) {
 		const d = doc as ClanBattleLogDoc;
-		// Store in both clan files so each clan's file is fully self-contained
+		// Store in both clan log files so each clan's logs are fully self-contained
 		for (const clanId of [d.winningClan, d.losingClan]) {
-			const file = readClanFile(clanId);
-			if (file) { file.battleLogs.push(d); await writeClanFile(file); }
+			const logsFile = readLogsFile(clanId);
+			logsFile.battleLogs.push(d);
+			await writeLogsFile(clanId, logsFile);
 		}
 		return { insertedId: '' as ID };
 	},
@@ -896,16 +908,23 @@ const ClanBattleLogsCollection: Collection<ClanBattleLogDoc> = {
 			?? filter.losingClan;
 
 		if (clanId) {
-			const file = readClanFile(clanId as ID);
-			if (file) {
-				file.battleLogs = file.battleLogs.filter(l => !matchesFilter(l, filter));
-				await writeClanFile(file);
+			const logsFile = readLogsFile(clanId as ID);
+			const before = logsFile.battleLogs.length;
+			logsFile.battleLogs = logsFile.battleLogs.filter(l => !matchesFilter(l, filter));
+			if (logsFile.battleLogs.length !== before) {
+				await writeLogsFile(clanId as ID, logsFile);
 			}
 		} else {
-			for (const file of readAllClanFiles()) {
-				const before = file.battleLogs.length;
-				file.battleLogs = file.battleLogs.filter(l => !matchesFilter(l, filter));
-				if (file.battleLogs.length !== before) await writeClanFile(file);
+			for (const entry of FS(BASE).readdirSync()) {
+				if (!entry.endsWith('.json')) continue;
+				const id = entry.slice(0, -5) as ID;
+				if (['users', 'bans', 'clan-stats'].includes(id)) continue;
+				const logsFile = readLogsFile(id);
+				const before = logsFile.battleLogs.length;
+				logsFile.battleLogs = logsFile.battleLogs.filter(l => !matchesFilter(l, filter));
+				if (logsFile.battleLogs.length !== before) {
+					await writeLogsFile(id, logsFile);
+				}
 			}
 		}
 	},
@@ -916,8 +935,6 @@ const ClanBattleLogsCollection: Collection<ClanBattleLogDoc> = {
 		return (await ClanBattleLogsCollection.find(filter)).length;
 	},
 };
-
-// ─── ClanWars ─────────────────────────────────────────────────────────────────
 
 const ClanWarsCollection: Collection<ClanWarDoc> = {
 	async findOne(filter) {
@@ -994,8 +1011,6 @@ const ClanWarsCollection: Collection<ClanWarDoc> = {
 		return readAllWarFiles().filter(w => matchesFilter(w, filter)).length;
 	},
 };
-
-// ─── Exports ──────────────────────────────────────────────────────────────────
 
 export const Clans = ClansCollection;
 export const UserClans = UserClansCollection;

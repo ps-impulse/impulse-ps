@@ -6,7 +6,6 @@ export interface ClanUIState {
 	page?: number;
 }
 
-// Memory-only state for UI navigation
 export const uiState: Record<string, ClanUIState> = {};
 
 export function getUIState(userid: string): ClanUIState {
