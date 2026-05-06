@@ -326,7 +326,7 @@ export const adminWarCommands: Chat.ChatCommands = {
 				{ $unset: { 'stats.lastWarChallenge': 1 } }
 			);
 
-			const clanRoom = Rooms.get(clan.chatRoom);
+			const clanRoom = Rooms.get(toID(clan.chatRoom) as RoomID);
 			if (clanRoom) {
 				clanRoom.add(
 					`|html|<div class="broadcast-red"><center>` +
@@ -1411,8 +1411,8 @@ export const playerWarCommands: Chat.ChatCommands = {
 					`<strong>New Format:</strong> Best of ${newBestOf} (First to ${winsNeeded} wins)` +
 					`</center></div>`;
 
-				const room1 = Rooms.get(myClan.chatRoom);
-				const room2 = Rooms.get(opponentClan.chatRoom);
+				const room1 = Rooms.get(toID(myClan.chatRoom) as RoomID);
+				const room2 = Rooms.get(toID(opponentClan.chatRoom) as RoomID);
 				if (room1) room1.add(message).update();
 				if (room2) room2.add(message).update();
 
@@ -1421,7 +1421,7 @@ export const playerWarCommands: Chat.ChatCommands = {
 				this.sendReply(`You have proposed extending the war to Best of ${newBestOf}. Waiting for ${opponentClan.name} to decide...`);
 
 				const newWinsNeeded = Math.ceil(newBestOf / 2);
-				const opponentRoom = Rooms.get(opponentClan.chatRoom);
+				const opponentRoom = Rooms.get(toID(myClan.chatRoom) as RoomID);
 				if (opponentRoom) {
 					opponentRoom.add(
 						`|html|<div class="broadcast-blue"><center>` +
