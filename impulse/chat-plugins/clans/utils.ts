@@ -164,11 +164,13 @@ export async function getClanContext(
 
 export async function getClanById(
 	clanId: ID,
-	context: Chat.CommandContext
+	context: Chat.CommandContext | Chat.PageContext
 ): Promise<ClanDoc | null> {
 	const clan = await Clans.findOne({ _id: clanId });
 	if (!clan) {
-		context.errorReply(`Clan '${clanId}' not found.`);
+		if ('errorReply' in context && typeof context.errorReply === 'function') {
+			context.errorReply(`Clan '${clanId}' not found.`);
+		}
 		return null;
 	}
 	return clan;
