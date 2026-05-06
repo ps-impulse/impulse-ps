@@ -4,8 +4,9 @@
 */
 import { FS } from '../../../lib';
 import { toID } from '../../../sim/dex';
-import { ensureCustomCSS } from '../../impulse-utils';
+//import { ensureCustomCSS } from '../../impulse-utils';
 
+const CONFIG_PATH = 'config/custom.css';
 const DATA_FILE = 'impulse/db/custom-symbol-colors.json';
 const CONFIG_PATH = 'config/custom.css';
 const STAFF_ROOM_ID = 'staff';
@@ -25,6 +26,17 @@ interface SymbolColorData {
 }
 
 let data: SymbolColorData = {};
+
+export const ensureCustomCSS = async (): Promise<void> => {
+	try {
+		const existing = await FS(CONFIG_PATH).readIfExists();
+		if (existing === null || existing === undefined) {
+			await FS(CONFIG_PATH).write('');
+		}
+	} catch (e) {
+		console.error('Failed to ensure custom.css exists:', e);
+	}
+};
 
 const saveData = (): void => {
 	FS(DATA_FILE).writeUpdate(() => JSON.stringify(data));
