@@ -1,5 +1,5 @@
 import { Clans, UserClans, ClanWars, ClanLogs } from './database';
-import { ELO_K_FACTOR, MIN_ELO_CHANGE, ROOM_RANK_OWNER, ROOM_RANK_LEADER, ROOM_RANK_OFFICER, ROOM_RANK_MEMBER } from './constants';
+import { ELO_K_FACTOR, MIN_ELO_CHANGE, ROOM_RANK_OWNER, ROOM_RANK_LEADER, ROOM_RANK_OFFICER, ROOM_RANK_MEMBER, DEFAULT_ELO, ROLE_LEVELS } from './constants';
 import { Utils, FS } from '../../../lib';
 import type { Clan, ClanMember, ClanRole, ClanWar, ClanLogType } from './interface';
 import type { Clans, UserClans, ClanWars, ClanLogs } from './database';
