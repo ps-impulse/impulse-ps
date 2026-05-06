@@ -4,11 +4,11 @@
  * @author PrinceSky-Git
  *
  * File layout:
- *   impulse/data/clans/{clanid}.json        — full clan document (members, settings, logs, points logs, battle logs)
- *   impulse/data/clans/wars/{warid}.json    — one file per war
- *   impulse/data/clans/users.json           — userid → { memberOf, invites }
- *   impulse/data/clans/bans.json            — { [userid]: true }
- *   impulse/data/clans/clan-stats.json      — { [clanid]: ClanStatEntry } for ladder queries
+ *   impulse/db/clans/{clanid}.json        — full clan document (members, settings, logs, points logs, battle logs)
+ *   impulse/db/clans/wars/{warid}.json    — one file per war
+ *   impulse/db/clans/users.json           — userid → { memberOf, invites }
+ *   impulse/db/clans/bans.json            — { [userid]: true }
+ *   impulse/db/clans/clan-stats.json      — { [clanid]: ClanStatEntry } for ladder queries
  */
 
 import { FS } from '../../../lib';
