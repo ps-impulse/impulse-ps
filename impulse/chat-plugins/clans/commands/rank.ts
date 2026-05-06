@@ -1,9 +1,3 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans Role Commands
- * @author PrinceSky-Git
- */
-
 import { Clans } from '../database';
 import { hasMinRole, log } from '../utils';
 import { getClanContext, assertClanMember, assertNotOwner } from '../helpers/context';
@@ -13,8 +7,6 @@ import { Utils } from '../../../../lib';
 import type { ClanRole } from '../interface';
 
 const esc = (v: string | number | undefined | null) => Utils.escapeHTML(String(v ?? ''));
-
-// ─── Valid roles a member can be promoted or demoted to ───────────────────────
 
 const ASSIGNABLE_ROLES: ClanRole[] = ['leader', 'officer', 'member'];
 
@@ -80,8 +72,6 @@ export const rankCommands: Chat.ChatCommands = {
 				{ $set: { [`members.${targetId}.role`]: newRole } }
 			);
 
-			await log(clanId, 'PROMOTE', `${actorId} promoted ${targetId} to ${newRole}`);
-
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
 				const newRoomRank = CLAN_ROLE_TO_ROOM_RANK[newRole] || '+';
@@ -94,6 +84,8 @@ export const rankCommands: Chat.ChatCommands = {
 			if (targetUser?.connected) {
 				targetUser.popup(`|html|<div class="infobox">You have been promoted to <b>${esc(newRole)}</b> in ${esc(clan.name)} by ${esc(user.name)}.</div>`);
 			}
+
+			await log(clanId, 'PROMOTE', `${actorId} promoted ${targetId} to ${newRole}`);
 
 			this.sendReply(`You promoted '${esc(targetId)}' from ${esc(currentRole)} to ${esc(newRole)}.`);
 			refreshClanPage(user);
@@ -156,8 +148,6 @@ export const rankCommands: Chat.ChatCommands = {
 				{ $set: { [`members.${targetId}.role`]: newRole } }
 			);
 
-			await log(clanId, 'DEMOTE', `${actorId} demoted ${targetId} to ${newRole}`);
-
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
 				const newRoomRank = CLAN_ROLE_TO_ROOM_RANK[newRole] || '+';
@@ -170,6 +160,8 @@ export const rankCommands: Chat.ChatCommands = {
 			if (targetUser?.connected) {
 				targetUser.popup(`|html|<div class="infobox">You have been demoted to <b>${esc(newRole)}</b> in ${esc(clan.name)} by ${esc(user.name)}.</div>`);
 			}
+
+			await log(clanId, 'DEMOTE', `${actorId} demoted ${targetId} to ${newRole}`);
 
 			this.sendReply(`You demoted '${esc(targetId)}' from ${esc(currentRole)} to ${esc(newRole)}.`);
 		} catch (e) {
@@ -210,8 +202,6 @@ export const rankCommands: Chat.ChatCommands = {
 				}
 			);
 
-			await log(clanId, 'PROMOTE', `${actorId} transferred ownership to ${targetId}`);
-
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
 				clanRoom.auth.set(targetId, '#');
@@ -224,6 +214,8 @@ export const rankCommands: Chat.ChatCommands = {
 			if (targetUser?.connected) {
 				targetUser.popup(`|html|<div class="infobox">You are now the owner of <b>${esc(clan.name)}</b>! Ownership was transferred to you by ${esc(user.name)}.</div>`);
 			}
+
+			await log(clanId, 'PROMOTE', `${actorId} transferred ownership to ${targetId}`);
 
 			this.sendReply(`You transferred ownership of ${esc(clan.name)} to '${esc(targetId)}'. You are now a Leader.`);
 		} catch (e) {

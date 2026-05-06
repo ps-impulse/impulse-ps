@@ -1,9 +1,3 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans Admin Commands
- * @author PrinceSky-Git
- */
-
 import {
 	Clans, UserClans, ClanLogs, ClanPointsLogs,
 	ClanBattleLogs, ClanWars, ClanBans,
@@ -93,8 +87,6 @@ export const adminCommands: Chat.ChatCommands = {
 			await Clans.insertOne(newClan);
 			await UserClans.upsert({ _id: ownerId }, { $set: { memberOf: clanId } });
 
-			await log(clanId, 'CREATE', `${user.id} created the clan for ${ownerId}`);
-
 			const chatRoomTitle = `${clanName}`;
 			let newRoom = Rooms.get(chatRoomId);
 
@@ -127,6 +119,8 @@ export const adminCommands: Chat.ChatCommands = {
 					`Go to Clan Room: #${newRoom.roomid}</button></center></div>`
 				);
 			}
+
+			await log(clanId, 'CREATE', `${user.id} created the clan for ${ownerId}`);
 
 			this.sendReply(`Clan "${clanName}" has been successfully created! Owner: ${ownerId}.`);
 			this.room.add(`|html|<div class="infobox"><center>Clan "${clanName}" has been successfully created! Owner: ${ownerId}.</center></div>`);
@@ -170,9 +164,6 @@ export const adminCommands: Chat.ChatCommands = {
 				);
 			}
 
-			// Log before deleting so the entry exists briefly
-			await log(clanId, 'DELETE', `${user.id} deleted the clan`);
-
 			await Clans.deleteOne({ _id: clanId });
 			await UserClans.updateMany({ memberOf: clanId }, { $unset: { memberOf: 1 } });
 			await UserClans.updateMany({ invites: clanId }, { $pull: { invites: clanId } });
@@ -204,6 +195,9 @@ export const adminCommands: Chat.ChatCommands = {
 					);
 				}
 			}
+
+			// Log after deleting so the tombstone entry is the only thing in the log file
+			await log(clanId, 'DELETE', `${user.id} deleted the clan`);
 
 			this.sendReply(`Clan "${clan.name}" (${clanId}) has been successfully deleted.`);
 			refreshClanPage(user);

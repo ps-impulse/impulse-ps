@@ -1,9 +1,3 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans Member Commands
- * @author PrinceSky-Git
- */
-
 import { Clans, UserClans, ClanBans } from '../database';
 import { hasMinRole, log, to } from '../utils';
 import { getClanContext, getClanById, assertClanMember, assertNotOwner } from '../helpers/context';
@@ -65,8 +59,6 @@ export const memberCommands: Chat.ChatCommands = {
 				$pull: { invites: clanId },
 			});
 
-			await log(clanId, 'JOIN', `${userId} joined the clan`);
-
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
 				clanRoom.auth.set(userId, '+');
@@ -74,6 +66,8 @@ export const memberCommands: Chat.ChatCommands = {
 				user.joinRoom(clanRoom.roomid, this.connection);
 				clanRoom.add(`|html|<div class="infobox">${esc(user.name)} joined the clan and was granted Room Voice.</div>`).update();
 			}
+
+			await log(clanId, 'JOIN', `${userId} joined the clan`);
 
 			this.sendReply(`You have successfully joined the clan '${esc(clan.name)}'!`);
 			if (clanRoom) this.sendReply(`You have been automatically joined to the clan chatroom: #${esc(clan.chatRoom)}`);
@@ -101,8 +95,6 @@ export const memberCommands: Chat.ChatCommands = {
 			await Clans.updateOne({ _id: clanId }, { $unset: { [`members.${userId}`]: "" } });
 			await UserClans.updateOne({ _id: userId }, { $unset: { memberOf: 1 } });
 
-			await log(clanId, 'LEAVE', `${userId} left the clan`);
-
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
 				clanRoom.auth.delete(userId);
@@ -110,6 +102,8 @@ export const memberCommands: Chat.ChatCommands = {
 				clanRoom.add(`|html|<div class="infobox"><center>${esc(user.name)} left the clan.</center></div>`).update();
 				user.leaveRoom(clanRoom.roomid, this.connection);
 			}
+
+			await log(clanId, 'LEAVE', `${userId} left the clan`);
 
 			this.sendReply(`You have successfully left the clan '${esc(clan.name)}'.`);
 		} catch (e) {
@@ -151,8 +145,6 @@ export const memberCommands: Chat.ChatCommands = {
 			await Clans.updateOne({ _id: clanId }, { $unset: { [`members.${targetId}`]: "" } });
 			await UserClans.updateOne({ _id: targetId }, { $unset: { memberOf: 1 } });
 
-			await log(clanId, 'KICK', `${kickerId} kicked ${targetId} from the clan`);
-
 			const clanRoom = Rooms.get(clan.chatRoom);
 			if (clanRoom) {
 				clanRoom.auth.delete(targetId);
@@ -166,6 +158,8 @@ export const memberCommands: Chat.ChatCommands = {
 			if (targetUser?.connected) {
 				targetUser.popup(`|html|<div class="infobox">You have been kicked from the clan <b>${esc(clan.name)}</b> by ${esc(user.name)}.</div>`);
 			}
+
+			await log(clanId, 'KICK', `${kickerId} kicked ${targetId} from the clan`);
 
 			this.sendReply(`You kicked '${esc(targetId)}' from ${esc(clan.name)}.`);
 			refreshClanPage(user);

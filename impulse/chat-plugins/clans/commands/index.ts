@@ -1,9 +1,3 @@
-/*
- * Pokemon Showdown - Impulse Server
- * Clans Commands Index
- * @author PrinceSky-Git
- */
-
 import { memberCommands } from './member';
 import { rankCommands } from './rank';
 import { clanInfoCommands } from './clan-info';
@@ -12,8 +6,6 @@ import { warCommands } from '../war/index';
 import { renderClanPage, refreshClanPage } from '../render';
 import { setUIState, type ClanView } from '../state';
 import { Utils } from '../../../../lib';
-
-// ─── Help Lists ───────────────────────────────────────────────────────────────
 
 const MEMBER_HELP = [
 	{ cmd: "/clan join [Clan ID]", desc: "Join a clan." },
@@ -70,8 +62,6 @@ const ADMIN_HELP = [
 	{ cmd: "/clan clearmembers [clan id]", desc: "Remove all members except owner. Requires: &." },
 ];
 
-// ─── Help Builder ─────────────────────────────────────────────────────────────
-
 function buildHelpHtml(
 	sections: { title: string; items: { cmd: string; desc: string }[] }[]
 ): string {
@@ -90,28 +80,15 @@ function buildHelpHtml(
 	return html;
 }
 
-// ─── Exports ──────────────────────────────────────────────────────────────────
-
 export const commands: Chat.ChatCommands = {
 	clan: {
-		// ── Member Commands ──────────────────────────────────────────────────
 		...memberCommands,
-
-		// ── Role Commands ────────────────────────────────────────────────────
 		...rankCommands,
-
-		// ── Info & Settings Commands ─────────────────────────────────────────
 		...clanInfoCommands,
-
-		// ── Admin Commands ───────────────────────────────────────────────────
 		...adminCommands,
-
-		// ── War Commands ─────────────────────────────────────────────────────
 		war: {
 			...warCommands,
 		},
-
-		// ── Help ─────────────────────────────────────────────────────────────
 		help() {
 			if (!this.runBroadcast()) return;
 			const html = buildHelpHtml([
