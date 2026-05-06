@@ -1,9 +1,9 @@
 import { Utils } from '../../../lib';
 import { Clans, UserClans } from './database';
-import { getClanById } from './helpers/context';
-import { displayElo } from './helpers/elo';
+import { getClanById } from './utils';
+import { displayElo } from './utils';
 import { toDurationString } from './utils';
-import { getUIState, type ClanUIState } from './state';
+import { getUIState, type ClanUIState } from './utils';
 
 // ─── Primitive UI Helpers (Using PokeRogue CSS) ──────────────────────────────
 
@@ -99,6 +99,10 @@ export async function renderClanProfile(clanId: string, user: User, room: Room):
 	buf += `<div><strong>Owner:</strong> ${Utils.escapeHTML(ownerName)}</div>`;
 	buf += `<div><strong>Members:</strong> ${totalMembers}</div>`;
 	buf += `<div><strong>Points:</strong> ${clan.points}</div>`;
+	buf += `<div><strong>Tournament Wins:</strong> ${clan.stats.tourWins || 0}</div>`;
+	buf += `<div><strong>Event Wins:</strong> ${clan.stats.eventWins || 0}</div>`;
+	buf += `<div><strong>Clan Battle Wins:</strong> ${clan.stats.clanBattleWins || 0}</div>`;
+	buf += `<div><strong>Clan Battle Losses:</strong> ${clan.stats.clanBattleLosses || 0}</div>`;
 	buf += `<div><strong>ELO:</strong> ${displayElo(clan.stats.elo)}</div>`;
 	buf += `<div><strong>Created:</strong> ${clanAge} ago</div>`;
 	buf += `</div></div>`;

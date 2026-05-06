@@ -8,6 +8,7 @@ export interface ClanMember {
 
 export interface ClanStats {
 	tourWins: number;
+	eventWins?: number;
 	totalPointsEarned: number;
 	clanBattleWins: number;
 	clanBattleLosses: number;
