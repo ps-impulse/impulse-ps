@@ -49,6 +49,7 @@ export const CLAN_TAG_REGEX = /^[A-Z]+$/;
 
 export const DEFAULT_STATS = {
 	tourWins: 0,
+	eventWins: 0,
 	totalPointsEarned: 0,
 	clanBattleWins: 0,
 	clanBattleLosses: 0,

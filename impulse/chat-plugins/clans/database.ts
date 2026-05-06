@@ -32,6 +32,7 @@ export interface ClanStatEntry {
 	points: number;
 	memberCount: number;
 	tourWins: number;
+	eventWins: number;
 	totalPointsEarned: number;
 	clanBattleWins: number;
 	clanBattleLosses: number;
@@ -1019,3 +1020,4 @@ export const ClanPointsLogs = ClanPointsLogsCollection;
 export const ClanBans = ClanBansCollection;
 export const ClanBattleLogs = ClanBattleLogsCollection;
 export const ClanWars = ClanWarsCollection;
+ClanWarsCollection;

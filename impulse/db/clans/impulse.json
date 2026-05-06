@@ -1,0 +1,32 @@
+{
+	"clan": {
+		"_id": "impulse",
+		"name": "Impulse",
+		"tag": "IMPUL",
+		"owner": "princesky",
+		"members": {
+			"princesky": {
+				"role": "owner",
+				"joinDate": 1778049143048,
+				"totalPointsContributed": 0
+			}
+		},
+		"created": 1778049143048,
+		"desc": "Welcome to Impulse!",
+		"memberOfTheWeek": "",
+		"inviteOnly": false,
+		"invites": [],
+		"points": 0,
+		"chatRoom": "impulse",
+		"icon": "",
+		"lastActive": 1778049143048,
+		"stats": {
+			"tourWins": 0,
+			"totalPointsEarned": 0,
+			"clanBattleWins": 0,
+			"clanBattleLosses": 0,
+			"elo": 1000,
+			"lastWarChallenge": 0
+		}
+	}
+}

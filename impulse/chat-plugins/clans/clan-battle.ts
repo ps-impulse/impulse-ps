@@ -1,7 +1,7 @@
 import { Clans, UserClans, ClanBattleLogs, ClanWars } from './database';
 import type { ClanBattleLogEntry } from './interface';
-import { calculateElo, safeElo } from './helpers/elo';
-import { broadcastWarUpdate, broadcastWarEnded, getWarUhtmlId } from './helpers/broadcast';
+import { calculateElo, safeElo } from './utils';
+import { broadcastWarUpdate, broadcastWarEnded, getWarUhtmlId } from './utils';
 import { resolveWarClans } from './war/war-context';
 import { log } from './utils';
 

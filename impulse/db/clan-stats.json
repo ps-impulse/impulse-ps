@@ -1,0 +1,14 @@
+{
+	"impulse": {
+		"name": "Impulse",
+		"tag": "IMPUL",
+		"points": 0,
+		"memberCount": 1,
+		"tourWins": 0,
+		"totalPointsEarned": 0,
+		"clanBattleWins": 0,
+		"clanBattleLosses": 0,
+		"elo": 1000,
+		"lastWarChallenge": 0
+	}
+}
