@@ -436,6 +436,3 @@ export const memberCommands: Chat.ChatCommands = {
 		this.sendReply(`Announcement sent to ${sentTo} online member(s) of your clan.`);
 	},
 };
-our clan.`);
-	},
-};
