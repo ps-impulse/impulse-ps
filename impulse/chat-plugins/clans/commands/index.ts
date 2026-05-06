@@ -90,7 +90,6 @@ function buildHelpHtml(
 }
 
 // ─── Help Lists ───────────────────────────────────────────────────────────────
-...
 export const commands: Chat.ChatCommands = {
 	clan: {
 		// ── Member Commands ──────────────────────────────────────────────────
