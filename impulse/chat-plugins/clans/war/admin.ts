@@ -480,9 +480,3 @@ export const adminWarCommands: Chat.ChatCommands = {
 		}
 	},
 };
-},
-};
-
-};
-},
-};
