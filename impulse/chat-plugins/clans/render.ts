@@ -1,9 +1,6 @@
 import { Utils } from '../../../lib';
 import { Clans, UserClans } from './database';
-import { getClanById } from './utils';
-import { displayElo } from './utils';
-import { toDurationString } from './utils';
-import { getUIState, type ClanUIState } from './utils';
+import { displayElo, toDurationString, getUIState, type ClanUIState } from './utils';
 
 // ─── Primitive UI Helpers (Using PokeRogue CSS) ──────────────────────────────
 
@@ -37,7 +34,7 @@ export function refreshClanPage(user: User): void {
 
 export async function renderClanPage(user: User, room: Room): Promise<string> {
 	const state = getUIState(user.id);
-	
+
 	switch (state.view) {
 	case 'main':
 		return await renderMainView(user);
@@ -56,7 +53,7 @@ export async function renderClanPage(user: User, room: Room): Promise<string> {
 
 export async function renderMainView(user: User): Promise<string> {
 	const userClanInfo = await UserClans.findOne({ _id: user.id });
-	
+
 	let buf = `<div class="pr">`;
 	buf += renderHeader('Clans Dashboard', false);
 	buf += `<div style="padding: 14px">`;
@@ -67,7 +64,7 @@ export async function renderMainView(user: User): Promise<string> {
 		buf += renderBtn(`/clan view profile ${userClanInfo.memberOf}`, 'My Clan');
 	}
 	buf += `</div>`;
-	
+
 	buf += `<div class="pr-section-title">Welcome to Clans</div>`;
 	buf += `<div style="background:rgba(0,0,0,0.15);padding:11px 13px;border-radius:8px;margin-bottom:8px;font-size:12px;line-height:1.55">`;
 	if (!userClanInfo?.memberOf) {
@@ -80,10 +77,10 @@ export async function renderMainView(user: User): Promise<string> {
 }
 
 export async function renderClanProfile(clanId: string, user: User, room: Room): Promise<string> {
-	if (!clanId) return `<div class="pr"><div style="padding: 14px">No clan specified.</div></div>`;
+	if (!clanId) return `<div class="pr">${renderHeader('Not Found')}<div style="padding: 14px">No clan specified.</div></div>`;
 
 	const clan = await Clans.findOne({ _id: clanId as ID });
-	if (!clan) return `<div class="pr"><div style="padding: 14px">This clan no longer exists.</div></div>`;
+	if (!clan) return `<div class="pr">${renderHeader('Not Found')}<div style="padding: 14px">This clan no longer exists.</div></div>`;
 
 	const totalMembers = Object.keys(clan.members).length;
 	const clanAge = toDurationString(Date.now() - clan.created);
@@ -151,7 +148,7 @@ export async function renderClanList(page: number): Promise<string> {
 	});
 
 	buf += `</tbody></table></div>`;
-	
+
 	buf += `<div class="pr-actions" style="margin-top: 14px;">`;
 	if (page > 1) buf += renderBtn(`/clan view list ${page - 1}`, 'Previous', 'pr-btn');
 	if (page < totalPages) buf += renderBtn(`/clan view list ${page + 1}`, 'Next', 'pr-btn');
@@ -160,10 +157,10 @@ export async function renderClanList(page: number): Promise<string> {
 }
 
 export async function renderMembers(clanId: string, user: User, room: Room): Promise<string> {
-	if (!clanId) return `<div class="pr"><div style="padding: 14px">No clan specified.</div></div>`;
+	if (!clanId) return `<div class="pr">${renderHeader('Not Found')}<div style="padding: 14px">No clan specified.</div></div>`;
 
 	const clan = await Clans.findOne({ _id: clanId as ID });
-	if (!clan) return `<div class="pr"><div style="padding: 14px">This clan no longer exists.</div></div>`;
+	if (!clan) return `<div class="pr">${renderHeader('Not Found')}<div style="padding: 14px">This clan no longer exists.</div></div>`;
 
 	const ROLE_LEVELS: Record<string, number> = { owner: 100, leader: 50, officer: 25, member: 10 };
 	const memberEntries = Object.entries(clan.members).sort((a, b) => {
