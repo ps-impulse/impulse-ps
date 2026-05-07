@@ -1,7 +1,7 @@
 import { getState, setState, deleteState, savedData, saveAllData } from './state';
 import { getLevelUpEvo, getExpType, getLevelUpMoves, expForLevel } from './pokemon';
 import { type PokeRogueState, type PokemonEntry } from './types';
-import { nameColor } from '../customization/colors';
+import { nameColor } from '../customization/custom-color';
 
 const STARTING_BP = 20;
 const LADDER_RESET_CONFIRM_WINDOW = 2 * 60 * 1000;
