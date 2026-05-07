@@ -3533,19 +3533,3 @@ width: 200px;
 .dark .chat-log-add.hasuserlist {
 	left: 146px;
 }
-
-
-/* SYMBOLCOLORS START */
-[id$="-userlist-user-princesky"] button > em.group { color: #ee6898 !important; }
-[class$="chatmessage-princesky"] strong small, .groupsymbol { color: #ee6898 !important; }
-/* SYMBOLCOLORS END */
-
-/* COLORS START */
-[class$="chatmessage-princesky"] strong, [class$="chatmessage-princesky mine"] strong, [class$="chatmessage-princesky highlighted"] strong, [id$="-userlist-user-princesky"] strong em, [id$="-userlist-user-princesky"] strong, [id$="-userlist-user-princesky"] span { color: #318CE7 !important; }
-/* COLORS END */
-
-/* ICONS START */
-[id$="-userlist-user-alliancesky"] { background: url("https://www.pkparaiso.com/imagenes/shuffle/sprites/492.png") right no-repeat !important; background-size: 24px!important;}
-[id$="-userlist-user-princesky"] { background: url("https://www.pkparaiso.com/imagenes/shuffle/sprites/399.png") right no-repeat !important; background-size: 24px!important;}
-[id$="-userlist-user-impulsesun"] { background: url("https://www.pkparaiso.com/imagenes/shuffle/sprites/383_01.png") right no-repeat !important; background-size: 24px!important;}
-/* ICONS END */
