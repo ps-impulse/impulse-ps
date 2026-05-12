@@ -1,1 +1,0 @@
-PokèRogue chat-plugin directory.
