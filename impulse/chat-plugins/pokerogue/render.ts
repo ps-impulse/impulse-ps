@@ -347,10 +347,10 @@ function renderPendingSwap(state: PokeRogueState): string {
 		const mon = state.team[i];
 		const spName = Dex.species.get(toID(mon.species)).name;
 		const flexHtml = `<span style="font-size:12px;font-weight:500">${spName}</span> <span style="font-size:10px;color:#888">Lv. ${mon.level}</span>`;
-		buf += renderChoiceRow(getSpriteWithBall(mon.species, 40, mon.ball), flexHtml, renderBtn(`/pokerogue swapmon ${i + 1}`, 'Replace', 'pr-pick-btn'), 'cursor:pointer');
+		buf += renderChoiceRow(getSpriteWithBall(mon.species, 40, mon.ball), flexHtml, renderBtn(`/pokerogue resolve swapmon ${i + 1}`, 'Replace', 'pr-pick-btn'), 'cursor:pointer');
 	}
 
-	buf += renderBtn('/pokerogue swapmon skip', `Release ${sp.name}`, 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
+	buf += renderBtn('/pokerogue resolve swapmon skip', `Release ${sp.name}`, 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
 	return buf;
 }
 
@@ -366,10 +366,10 @@ function renderPendingMoves(state: PokeRogueState): string {
 	for (let i = 0; i < mon.moves.length; i++) {
 		const oldMove = Dex.moves.get(mon.moves[i]);
 		const flexHtml = `<div><div style="font-size:12px;font-weight:500">${oldMove.name}</div><div style="font-size:10px;color:#888">Type: ${oldMove.type} &nbsp;|&nbsp; BP: ${oldMove.basePower || '—'}</div></div>`;
-		buf += renderChoiceRow('', flexHtml, renderBtn(`/pokerogue learnmove ${i + 1}`, 'Forget', 'pr-pick-btn'), 'justify-content:space-between');
+		buf += renderChoiceRow('', flexHtml, renderBtn(`/pokerogue resolve learnmove ${i + 1}`, 'Forget', 'pr-pick-btn'), 'justify-content:space-between');
 	}
 
-	buf += renderBtn('/pokerogue learnmove skip', 'Keep old moves', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
+	buf += renderBtn('/pokerogue resolve learnmove skip', 'Keep old moves', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
 	return buf;
 }
 
@@ -387,11 +387,11 @@ function renderTeachTM(state: PokeRogueState): string {
 		const reason = alreadyKnows ? 'already knows' : !canLearn ? 'cannot learn' : '';
 
 		const flexHtml = `<span style="font-size:12px;font-weight:500">${spName}</span> <span style="font-size:10px;color:#888">Lv. ${mon.level}${reason ? ` (${reason})` : ''}</span>`;
-		const btnHtml = disabled ? '' : renderBtn(`/pokerogue teachtm ${i + 1}`, 'Teach', 'pr-pick-btn');
+		const btnHtml = disabled ? '' : renderBtn(`/pokerogue resolve teachtm ${i + 1}`, 'Teach', 'pr-pick-btn');
 		buf += renderChoiceRow(getSpriteWithBall(mon.species, 40, mon.ball), flexHtml, btnHtml, disabled ? 'opacity:.45' : '');
 	}
 
-	buf += renderBtn('/pokerogue teachtm skip', 'Cancel <small style="color:#888">(refund)</small>', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
+	buf += renderBtn('/pokerogue resolve teachtm skip', 'Cancel <small style="color:#888">(refund)</small>', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
 	return buf;
 }
 
@@ -400,9 +400,9 @@ function renderItemOptions(state: PokeRogueState): string {
 	for (const itemName of state.itemOptions!) {
 		const dexItem = Dex.items.get(itemName);
 		const flexHtml = `<div style="display:flex;align-items:center;gap:8px">${getShopItemIcon(itemURLFormat(itemName), 24)}<span style="font-size:13px;font-weight:500">${Utils.escapeHTML(dexItem.name || itemName)}</span></div>`;
-		buf += renderChoiceRow('', flexHtml, renderBtn(`/pokerogue pickitem ${toID(itemName)}`, 'Pick', 'pr-pick-btn'), 'justify-content:space-between');
+		buf += renderChoiceRow('', flexHtml, renderBtn(`/pokerogue resolve pickitem ${toID(itemName)}`, 'Pick', 'pr-pick-btn'), 'justify-content:space-between');
 	}
-	buf += renderBtn('/pokerogue pickitem skip', 'Skip', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
+	buf += renderBtn('/pokerogue resolve pickitem skip', 'Skip', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
 	return buf;
 }
 
@@ -416,10 +416,10 @@ function renderGiveItem(state: PokeRogueState): string {
 		const spName = Dex.species.get(toID(mon.species)).name;
 		let flexHtml = `<span style="font-size:12px;font-weight:500">${spName}</span> <span style="font-size:10px;color:#888">Lv. ${mon.level}</span>`;
 		if (mon.heldItem) flexHtml += `<div style="font-size:9px;color:#8ab4f8">Holds: ${Utils.escapeHTML(Dex.items.get(mon.heldItem).name || mon.heldItem)}</div>`;
-		buf += renderChoiceRow(getSpriteWithBall(mon.species, 40, mon.ball), flexHtml, renderBtn(`/pokerogue giveitem ${i + 1}`, 'Give', 'pr-pick-btn'));
+		buf += renderChoiceRow(getSpriteWithBall(mon.species, 40, mon.ball), flexHtml, renderBtn(`/pokerogue resolve giveitem ${i + 1}`, 'Give', 'pr-pick-btn'));
 	}
 
-	buf += renderBtn('/pokerogue giveitem skip', 'Cancel <small style="color:#888">(refund)</small>', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
+	buf += renderBtn('/pokerogue resolve giveitem skip', 'Cancel <small style="color:#888">(refund)</small>', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
 	return buf;
 }
 
@@ -454,11 +454,11 @@ function renderConsumable(state: PokeRogueState): string {
 		if (mon.status) flexHtml += `<div style="font-size:9px;color:#ff9800">${mon.status.toUpperCase()}</div>`;
 		if (hp < 100 && hp > 0) flexHtml += `<div style="font-size:9px;color:#aaa">${hp}% HP</div>`;
 
-		const btnHtml = disabled ? '' : renderBtn(`/pokerogue useshopitem ${i + 1}`, 'Use', 'pr-pick-btn');
+		const btnHtml = disabled ? '' : renderBtn(`/pokerogue resolve useshopitem ${i + 1}`, 'Use', 'pr-pick-btn');
 		buf += renderChoiceRow(getSpriteWithBall(mon.species, 40, mon.ball), flexHtml, btnHtml, disabled ? 'opacity:.45' : '');
 	}
 
-	buf += renderBtn('/pokerogue useshopitem skip', 'Cancel', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
+	buf += renderBtn('/pokerogue resolve useshopitem skip', 'Cancel', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
 	return buf;
 }
 
@@ -551,8 +551,8 @@ function renderMainView(state: PokeRogueState, user: User): string {
 
 		const btnStyle = "display:block;width:100%;margin-bottom:4px;box-sizing:border-box;";
 		let actionBtn = renderBtn(`/pokerogue movemon ${i + 1}`, 'Move', 'pr-shop-buy', btnStyle);
-		actionBtn += renderBtn(qHealDisabled ? null : `/pokerogue qheal ${i + 1}`, qHealLabel, 'pr-shop-buy', btnStyle, qHealDisabled);
-		actionBtn += renderBtn(qCureDisabled ? null : `/pokerogue qcure ${i + 1}`, qCureLabel, 'pr-shop-buy', btnStyle, qCureDisabled);
+		actionBtn += renderBtn(qHealDisabled ? null : `/pokerogue qaction heal ${i + 1}`, qHealLabel, 'pr-shop-buy', btnStyle, qHealDisabled);
+		actionBtn += renderBtn(qCureDisabled ? null : `/pokerogue qaction cure ${i + 1}`, qCureLabel, 'pr-shop-buy', btnStyle, qCureDisabled);
 
 		if (state.team.length > 1) {
 			actionBtn += renderBtn(`/pokerogue releasemon ${i + 1}`, 'Release', 'pr-shop-buy', "display:block;width:100%;box-sizing:border-box;");

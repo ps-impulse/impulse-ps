@@ -108,16 +108,12 @@ function parseKillExp(
 	const isTrainerFloor = !!TRAINERS[floor.toString()];
 
 	for (const line of logLines) {
-		// Ignore everything except our custom hook output
 		if (!line.includes('PR_EXP|')) continue;
 
 		const parts = line.split('|');
-		// Find where our data starts (to account for |-message| prefixes)
 		const dataIndex = parts.indexOf('PR_EXP') + 1;
 		const enemySpecies = parts[dataIndex];
 		const enemyLevel = parseInt(parts[dataIndex + 1]);
-
-		// If there were no participants (edge case), default to an empty array
 		const participantSpeciesIds = parts[dataIndex + 2] ? parts[dataIndex + 2].split(',') : [];
 
 		const participantIndices = new Set<number>();
@@ -126,7 +122,6 @@ function parseKillExp(
 			if (idx !== -1) participantIndices.add(idx);
 		}
 
-		// If both fainted turn 1, fallback to slot 0 so exp isn't entirely lost
 		if (participantIndices.size === 0 && state.team.length > 0) {
 			participantIndices.add(0);
 		}
@@ -137,7 +132,6 @@ function parseKillExp(
 		const rawKillExp = Math.floor(Math.floor((b * enemyLevel) / 5 + 1) * a);
 		const basePerParticipant = Math.max(1, Math.floor(rawKillExp / validParticipantCount));
 
-		// 1. Calculate for Direct Participants
 		for (const teamIdx of participantIndices) {
 			const mon = state.team[teamIdx];
 			if (!mon) continue;
@@ -146,7 +140,6 @@ function parseKillExp(
 			expMap.set(teamIdx, (expMap.get(teamIdx) ?? 0) + exp);
 		}
 
-		// 2. Accumulate Base Share for the Bench (Exp. All)
 		for (let i = 0; i < state.team.length; i++) {
 			if (participantIndices.has(i)) continue;
 			if ((state.team[i].currentHp ?? 100) <= 0) continue;
@@ -162,44 +155,26 @@ function applyExpShare(
 	baseShareExpMap: Map<number, number>,
 	state: PokeRogueState,
 ): Map<number, number> {
-	// Upstream logic (pokerogue.net VictoryPhase):
-	//   For each party member:
-	//     if participated:   expMultiplier = 1 / participantCount
-	//     else if expShare:  expMultiplier = (expShareStacks * 0.2) / participantCount
-	//     pokemonExp = expValue * expMultiplier
-	//     applyModifiers(PokemonExpBoosterModifier)  <- Lucky Egg (+40% per stack) — already in expMap
-	//   Then globally:
-	//     applyModifiers(ExpBoosterModifier)  <- Exp. Charm (+25% per stack) — applied here to ALL mons
-
 	const expAllStacks = Math.min(5, (state.keyItems ?? []).filter(k => k === EXP_SHARE_NAME).length);
 	const expCharmStacks = (state.keyItems ?? []).filter(k => k === 'Exp. Charm').length;
 	const charmMult = expCharmStacks > 0 ? (1 + 0.25 * expCharmStacks) : 1;
 
 	const result = new Map<number, number>();
 
-	// Apply Exp. Charm to all direct participants
 	for (const [teamIdx, baseExp] of expMap) {
 		result.set(teamIdx, Math.max(1, Math.floor(baseExp * charmMult)));
 	}
 
 	if (expAllStacks === 0) return result;
 
-	// Apply Exp. All share + Lucky Egg + Exp. Charm to benched mons
 	for (const [teamIdx, basePerParticipant] of baseShareExpMap) {
-		if (expMap.has(teamIdx)) continue; // participant already handled above
+		if (expMap.has(teamIdx)) continue;
 		const mon = state.team[teamIdx];
 		if (!mon || (mon.currentHp ?? 100) <= 0) continue;
 
-		// Upstream: expMultiplier = (expAllStacks * 0.2) / participantCount
-		// basePerParticipant = rawKillExp / participantCount  (accumulated across all kills)
-		// so: benchedBase = basePerParticipant * expAllStacks * 0.2
 		let benchedExp = Math.floor(basePerParticipant * expAllStacks * 0.2);
-
-		// Lucky Egg applies before Exp. Charm (same order as participants)
 		const hasLuckyEgg = mon.heldItem === 'luckyegg';
 		if (hasLuckyEgg) benchedExp = Math.floor(benchedExp * 1.4);
-
-		// Exp. Charm applies globally to all mons
 		benchedExp = Math.max(1, Math.floor(benchedExp * charmMult));
 
 		result.set(teamIdx, benchedExp);
@@ -492,46 +467,234 @@ export const commands: Chat.ChatCommands = {
 			refreshGamePage(user);
 		},
 
-		learnmove(target, room, user) {
+		// Merged: learnmove, swapmon, pickitem, giveitem, useshopitem, teachtm
+		resolve(target, room, user) {
 			const state = getState(user.id);
-			if (!state?.pendingMoves?.length) return;
-			const pending = state.pendingMoves[0];
-			const mon = state.team[pending.pokemonIndex];
-			if (!mon.moves) mon.moves = getLevelUpMoves(mon.species, mon.level);
-			const t = target.trim();
-			if (t === 'skip') {
-				state.notification = `Your Pokémon gave up on learning <b>${Dex.moves.get(pending.move).name}</b>.`;
-			} else {
-				const slot = parseInt(t) - 1;
-				if (isNaN(slot) || slot < 0 || slot >= mon.moves.length) return this.errorReply("Invalid move slot.");
-				const oldMoveName = Dex.moves.get(mon.moves[slot]).name;
-				mon.moves[slot] = pending.move;
-				if (mon.ppLeft) mon.ppLeft[slot] = Math.floor((Dex.moves.get(pending.move).pp ?? 5) * (8 / 5));
-				state.notification = `Forgot ${oldMoveName} and learned <b>${Dex.moves.get(pending.move).name}</b>!`;
-			}
-			state.pendingMoves.shift();
-			setState(user.id, state);
-			refreshGamePage(user);
-		},
+			if (!state) return;
 
-		swapmon(target, room, user) {
-			const state = getState(user.id);
-			if (!state?.pendingSwap) return;
-			const t = target.trim();
-			const newMon = state.pendingSwap;
-			const newMonName = Dex.species.get(toID(newMon.species)).name;
+			const spaceIdx = target.indexOf(' ');
+			const action = spaceIdx === -1 ? target.trim() : target.slice(0, spaceIdx).trim();
+			const rest = spaceIdx === -1 ? '' : target.slice(spaceIdx + 1).trim();
 
-			if (t === 'skip') {
-				state.notification = `You released <b>${newMonName}</b> into the wild.`;
-			} else {
-				const slot = parseInt(t) - 1;
-				if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
-				const oldMonName = Dex.species.get(toID(state.team[slot].species)).name;
-				state.team[slot] = newMon;
-				if (state.pendingMoves) state.pendingMoves = state.pendingMoves.filter(p => p.pokemonIndex !== slot);
-				state.notification = `You replaced ${oldMonName} with <b>${newMonName}</b>!`;
+			switch (action) {
+			case 'learnmove': {
+				if (!state.pendingMoves?.length) return;
+				const pending = state.pendingMoves[0];
+				const mon = state.team[pending.pokemonIndex];
+				if (!mon.moves) mon.moves = getLevelUpMoves(mon.species, mon.level);
+				if (rest === 'skip') {
+					state.notification = `Your Pokémon gave up on learning <b>${Dex.moves.get(pending.move).name}</b>.`;
+				} else {
+					const slot = parseInt(rest) - 1;
+					if (isNaN(slot) || slot < 0 || slot >= mon.moves.length) return this.errorReply("Invalid move slot.");
+					const oldMoveName = Dex.moves.get(mon.moves[slot]).name;
+					mon.moves[slot] = pending.move;
+					if (mon.ppLeft) mon.ppLeft[slot] = Math.floor((Dex.moves.get(pending.move).pp ?? 5) * (8 / 5));
+					state.notification = `Forgot ${oldMoveName} and learned <b>${Dex.moves.get(pending.move).name}</b>!`;
+				}
+				state.pendingMoves.shift();
+				break;
 			}
-			delete state.pendingSwap;
+
+			case 'swapmon': {
+				if (!state.pendingSwap) return;
+				const newMon = state.pendingSwap;
+				const newMonName = Dex.species.get(toID(newMon.species)).name;
+				if (rest === 'skip') {
+					state.notification = `You released <b>${newMonName}</b> into the wild.`;
+				} else {
+					const slot = parseInt(rest) - 1;
+					if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
+					const oldMonName = Dex.species.get(toID(state.team[slot].species)).name;
+					state.team[slot] = newMon;
+					if (state.pendingMoves) state.pendingMoves = state.pendingMoves.filter(p => p.pokemonIndex !== slot);
+					state.notification = `You replaced ${oldMonName} with <b>${newMonName}</b>!`;
+				}
+				delete state.pendingSwap;
+				break;
+			}
+
+			case 'pickitem': {
+				if (!state.itemOptions?.length) return;
+				if (rest === 'skip') {
+					delete state.itemOptions;
+					delete state.purchasedItem;
+				} else {
+					const dexItem = Dex.items.get(rest);
+					if (!dexItem.exists) return this.errorReply("Unknown item.");
+					state.pendingItemName = dexItem.name;
+					delete state.itemOptions;
+				}
+				break;
+			}
+
+			case 'giveitem': {
+				if (!state.pendingItemName) return this.errorReply("No item pending.");
+				if (rest === 'skip') {
+					delete state.pendingItemName;
+					delete state.purchasedItem;
+					delete state.isRotationalItem;
+					delete state.pendingItemIsEvo;
+					delete state.pendingConsumableType;
+				} else {
+					const slot = parseInt(rest) - 1;
+					if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
+
+					const mon = state.team[slot];
+					const dexNewItem = Dex.items.get(state.pendingItemName);
+					const dexSpecies = Dex.species.get(toID(mon.species));
+
+					let evoTarget = '';
+					if (state.pendingItemIsEvo) {
+						const evoList = dexSpecies.evos;
+						if (evoList) {
+							for (const newEvo of evoList) {
+								const evoData = Dex.species.get(newEvo);
+								if (evoData.evoType === 'useItem' && toID(evoData.evoItem) === toID(dexNewItem.name)) {
+									evoTarget = evoData.id;
+									break;
+								}
+							}
+						}
+						if (!evoTarget) return this.errorReply("That Pokémon can't evolve with this item.");
+					}
+
+					if (state.purchasedItem) {
+						const item = ROTATIONAL_ITEM_POOL[state.purchasedItem] ?? SHOP_ITEMS[state.purchasedItem];
+						if (item) {
+							state.battlePoints -= item.cost;
+							if (state.isRotationalItem) {
+								state.rotationalShop = state.rotationalShop.filter(k => k !== state.purchasedItem);
+							}
+						}
+					}
+
+					if (state.pendingItemIsEvo) {
+						mon.species = evoTarget;
+						mon.expType = getExpType(evoTarget);
+						const evoName = Dex.species.get(evoTarget).name;
+						state.notification = `<b>${dexSpecies.name}</b> evolved into <b>${evoName}</b>!`;
+					} else {
+						if (dexNewItem.forcedForme && dexSpecies.otherFormes?.includes(dexNewItem.forcedForme)) {
+							mon.species = toID(dexNewItem.forcedForme);
+						} else if (mon.heldItem) {
+							const dexOldItem = Dex.items.get(mon.heldItem);
+							if (dexOldItem.forcedForme && dexSpecies.otherFormes?.includes(dexOldItem.forcedForme)) {
+								mon.species = toID(dexSpecies.changesFrom ?? dexSpecies.baseSpecies);
+							}
+						}
+						mon.heldItem = toID(state.pendingItemName);
+						state.notification = `Gave <b>${Utils.escapeHTML(dexNewItem.name)}</b> to <b>${dexSpecies.name}</b>!`;
+					}
+
+					delete state.pendingItemName;
+					delete state.purchasedItem;
+					delete state.isRotationalItem;
+					delete state.pendingItemIsEvo;
+				}
+				break;
+			}
+
+			case 'useshopitem': {
+				if (!state.purchasedItem) return this.errorReply("No item selected.");
+				if (rest === 'skip') {
+					delete state.purchasedItem;
+					delete state.pendingConsumableType;
+					delete state.isRotationalItem;
+				} else {
+					const itemKey = state.purchasedItem;
+					const item = SHOP_ITEMS[itemKey] ?? ROTATIONAL_ITEM_POOL[itemKey];
+					if (!item) return this.errorReply("Unknown item.");
+
+					const slot = parseInt(rest) - 1;
+					if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
+					const mon = state.team[slot];
+					const hp = mon.currentHp ?? 100;
+
+					if (item.type === 'healHP') {
+						if (hp >= 100) return this.errorReply("That Pokémon is already at full HP.");
+						state.battlePoints -= item.cost;
+						let healAmt = 20;
+						switch (item.name) {
+						case 'Potion': healAmt = 30; break;
+						case 'Super Potion': healAmt = 60; break;
+						case 'Hyper Potion': healAmt = 120; break;
+						case 'Max Potion': healAmt = 100; break;
+						}
+						mon.currentHp = item.name === 'Max Potion' ? 100 : Math.min(100, hp + healAmt);
+						state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b> restored HP! (${hp}% → ${mon.currentHp}%)`;
+					} else if (item.type === 'cureStatus') {
+						if (hp <= 0) return this.errorReply("Can't cure a fainted Pokémon.");
+						if (!mon.status) return this.errorReply("That Pokémon has no status condition.");
+						state.battlePoints -= item.cost;
+						const oldStatus = mon.status;
+						delete mon.status;
+						state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b>'s ${oldStatus.toUpperCase()} was cured!`;
+					} else if (item.type === 'revive') {
+						if (hp > 0) return this.errorReply("That Pokémon hasn't fainted.");
+						state.battlePoints -= item.cost;
+						mon.currentHp = (item.name === 'Max Revive' || mon.species === 'shedinja') ? 100 : 50;
+						delete mon.status;
+						state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b> was revived${item.name === 'Max Revive' ? ' to full health' : ''}!`;
+					}
+
+					delete state.purchasedItem;
+					delete state.pendingConsumableType;
+					delete state.isRotationalItem;
+				}
+				break;
+			}
+
+			case 'teachtm': {
+				if (!state.moveToLearn || !state.purchasedItem) return this.errorReply("No TM pending.");
+				const itemKey = state.purchasedItem;
+				const item = ROTATIONAL_ITEM_POOL[itemKey] ?? SHOP_ITEMS[itemKey];
+
+				if (rest === 'skip') {
+					delete state.moveToLearn;
+					delete state.purchasedItem;
+					delete state.isRotationalItem;
+					delete state.pokemonForTM;
+				} else {
+					const slot = parseInt(rest) - 1;
+					if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
+					const mon = state.team[slot];
+
+					const canLearn = Dex.species.getFullLearnset(toID(mon.species))
+						.some(l => Object.keys(l.learnset ?? {}).includes(toID(state.moveToLearn!)));
+					if (!canLearn) return this.errorReply("That Pokémon can't learn this TM move.");
+					if (mon.moves.includes(state.moveToLearn)) return this.errorReply("That Pokémon already knows this move.");
+
+					state.battlePoints -= item.cost;
+					if (state.isRotationalItem) state.rotationalShop = state.rotationalShop.filter(k => k !== itemKey);
+
+					state.pokemonForTM = slot;
+
+					if (mon.moves.length < 4) {
+						mon.moves.push(state.moveToLearn);
+						if (!mon.ppLeft) mon.ppLeft = mon.moves.map(m => Math.floor((Dex.moves.get(m).pp ?? 5) * (8 / 5)));
+						else mon.ppLeft.push(Math.floor((Dex.moves.get(state.moveToLearn).pp ?? 5) * (8 / 5)));
+						state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b> learned <b>${Dex.moves.get(state.moveToLearn).name}</b>!`;
+						delete state.moveToLearn;
+						delete state.purchasedItem;
+						delete state.isRotationalItem;
+						delete state.pokemonForTM;
+					} else {
+						state.pendingMoves = state.pendingMoves ?? [];
+						state.pendingMoves.unshift({ pokemonIndex: slot, move: state.moveToLearn, speciesName: mon.species });
+						delete state.moveToLearn;
+						delete state.purchasedItem;
+						delete state.isRotationalItem;
+						delete state.pokemonForTM;
+					}
+				}
+				break;
+			}
+
+			default:
+				return this.errorReply("Unknown resolve action.");
+			}
+
 			setState(user.id, state);
 			refreshGamePage(user);
 		},
@@ -889,11 +1052,9 @@ export const commands: Chat.ChatCommands = {
 				const dexSp = Dex.species.get(p2Species);
 				room.add(`|c|~|Gotcha! ${dexSp.name} was caught!`).update();
 
-				// --- FIX: MANUALLY EXTRACT PARTICIPANTS FROM LOG AND EMIT EXP ---
 				const p1Participants = new Set<string>();
 				let p2SwitchIdx = 0;
 
-				// 1. Find when the current wild Pokemon switched in
 				for (let i = log.length - 1; i >= 0; i--) {
 					if (/^\|(?:switch|drag)\|p2[a-z]:/.test(log[i])) {
 						p2SwitchIdx = i;
@@ -901,7 +1062,6 @@ export const commands: Chat.ChatCommands = {
 					}
 				}
 
-				// 2. Find which of our Pokemon was already active when the wild Pokemon appeared
 				for (let i = p2SwitchIdx; i >= 0; i--) {
 					const match = /^\|(?:switch|drag)\|p1[a-z]: [^|]+\|([^|,]+)/.exec(log[i]);
 					if (match) {
@@ -910,7 +1070,6 @@ export const commands: Chat.ChatCommands = {
 					}
 				}
 
-				// 3. Add any of our Pokemon that switched in AFTER the wild Pokemon appeared
 				for (let i = p2SwitchIdx; i < log.length; i++) {
 					const match = /^\|(?:switch|drag)\|p1[a-z]: [^|]+\|([^|,]+)/.exec(log[i]);
 					if (match) {
@@ -918,15 +1077,11 @@ export const commands: Chat.ChatCommands = {
 					}
 				}
 
-				// Inject the exact same message the onFaint hook would use!
 				const participantsStr = Array.from(p1Participants).join(',');
 				room.add(`|-message|PR_EXP|${p2Species}|${p2Level}|${participantsStr}`).update();
-				// ----------------------------------------------------------------
 
 				const moves = getLevelUpMoves(p2Species, p2Level);
-
 				const hpPct = Math.max(1, Math.round((p2Hp / p2MaxHp) * 100));
-
 				const natures = Dex.natures.all().map(n => n.name);
 				const randomNature = natures[Math.floor(Math.random() * natures.length)];
 
@@ -970,280 +1125,63 @@ export const commands: Chat.ChatCommands = {
 			}
 		},
 
-		teachtm(target, room, user) {
+		// Merged: qheal + qcure → qaction [heal|cure] [slot]
+		qaction(target, room, user) {
 			const state = getState(user.id);
-			if (!state?.moveToLearn || !state.purchasedItem) return this.errorReply("No TM pending.");
-			const t = target.trim();
-			const itemKey = state.purchasedItem;
-			const item = ROTATIONAL_ITEM_POOL[itemKey] ?? SHOP_ITEMS[itemKey];
+			if (!state || state.gameOver || state.battleRoomId) return this.errorReply("Cannot use quick actions right now.");
 
-			if (t === 'skip') {
-				delete state.moveToLearn;
-				delete state.purchasedItem;
-				delete state.isRotationalItem;
-				delete state.pokemonForTM;
-				setState(user.id, state);
-				refreshGamePage(user);
-				return;
-			}
-
-			const slot = parseInt(t) - 1;
-			if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
-			const mon = state.team[slot];
-
-			const canLearn = Dex.species.getFullLearnset(toID(mon.species))
-				.some(l => Object.keys(l.learnset ?? {}).includes(toID(state.moveToLearn!)));
-			if (!canLearn) return this.errorReply("That Pokémon can't learn this TM move.");
-			if (mon.moves.includes(state.moveToLearn)) return this.errorReply("That Pokémon already knows this move.");
-
-			state.battlePoints -= item.cost;
-			if (state.isRotationalItem) state.rotationalShop = state.rotationalShop.filter(k => k !== itemKey);
-
-			state.pokemonForTM = slot;
-
-			if (mon.moves.length < 4) {
-				mon.moves.push(state.moveToLearn);
-				if (!mon.ppLeft) mon.ppLeft = mon.moves.map(m => Math.floor((Dex.moves.get(m).pp ?? 5) * (8 / 5)));
-				else mon.ppLeft.push(Math.floor((Dex.moves.get(state.moveToLearn).pp ?? 5) * (8 / 5)));
-				state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b> learned <b>${Dex.moves.get(state.moveToLearn).name}</b>!`;
-				delete state.moveToLearn;
-				delete state.purchasedItem;
-				delete state.isRotationalItem;
-				delete state.pokemonForTM;
-			} else {
-				state.pendingMoves = state.pendingMoves ?? [];
-				state.pendingMoves.unshift({ pokemonIndex: slot, move: state.moveToLearn, speciesName: mon.species });
-				delete state.moveToLearn;
-				delete state.purchasedItem;
-				delete state.isRotationalItem;
-				delete state.pokemonForTM;
-			}
-
-			setState(user.id, state);
-			refreshGamePage(user);
-		},
-
-		qheal(target, room, user) {
-			const state = getState(user.id);
-			if (!state || state.gameOver || state.battleRoomId) return this.errorReply("Cannot Q Heal right now.");
-
-			const slot = parseInt(target.trim()) - 1;
+			const [type, slotStr] = target.trim().split(' ');
+			const slot = parseInt(slotStr) - 1;
 			if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
 
 			const mon = state.team[slot];
 			const hp = mon.currentHp ?? 100;
-			if (hp <= 0 || hp >= 100) return this.errorReply("Pokémon cannot be Q Healed.");
-
-			const hyperItem = Object.values(SHOP_ITEMS).find(i => i.name === 'Hyper Potion');
-			const superItem = Object.values(SHOP_ITEMS).find(i => i.name === 'Super Potion');
 			const bp = state.battlePoints ?? 0;
 
-			let usedItem = null;
-			let healAmt = 0;
+			if (type === 'heal') {
+				if (hp <= 0 || hp >= 100) return this.errorReply("Pokémon cannot be Q Healed.");
 
-			if (hp < 40) {
-				if (hyperItem && bp >= hyperItem.cost) {
-					usedItem = hyperItem;
-					healAmt = 120;
-				} else if (superItem && bp >= superItem.cost) {
-					usedItem = superItem;
-					healAmt = 60;
-				}
-			} else {
-				if (superItem && bp >= superItem.cost) {
-					usedItem = superItem;
-					healAmt = 60;
-				}
-			}
+				const hyperItem = Object.values(SHOP_ITEMS).find(i => i.name === 'Hyper Potion');
+				const superItem = Object.values(SHOP_ITEMS).find(i => i.name === 'Super Potion');
 
-			if (!usedItem) return this.errorReply("Not enough BP for Q Heal.");
+				let usedItem = null;
+				let healAmt = 0;
 
-			state.battlePoints -= usedItem.cost;
-			mon.currentHp = Math.min(100, hp + healAmt);
-			state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b> was Q-Healed using a ${usedItem.name}! (${hp}% → ${mon.currentHp}%)`;
-
-			setState(user.id, state);
-			refreshGamePage(user);
-		},
-
-		qcure(target, room, user) {
-			const state = getState(user.id);
-			if (!state || state.gameOver || state.battleRoomId) return this.errorReply("Cannot Q Cure right now.");
-
-			const slot = parseInt(target.trim()) - 1;
-			if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
-
-			const mon = state.team[slot];
-			const hp = mon.currentHp ?? 100;
-			if (hp <= 0 || !mon.status) return this.errorReply("Pokémon cannot be Q Cured.");
-
-			const cureItem = Object.values(SHOP_ITEMS).find(i => i.type === 'cureStatus');
-			if (!cureItem) return this.errorReply("No cure item found in shop.");
-
-			const bp = state.battlePoints ?? 0;
-			if (bp < cureItem.cost) return this.errorReply("Not enough BP for Q Cure.");
-
-			state.battlePoints -= cureItem.cost;
-			const oldStatus = mon.status;
-			delete mon.status;
-
-			state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b>'s ${oldStatus.toUpperCase()} was Q-Cured!`;
-
-			setState(user.id, state);
-			refreshGamePage(user);
-		},
-
-		pickitem(target, room, user) {
-			const state = getState(user.id);
-			if (!state?.itemOptions?.length) return;
-			const t = target.trim();
-			if (t === 'skip') {
-				delete state.itemOptions;
-				delete state.purchasedItem;
-				setState(user.id, state);
-				refreshGamePage(user);
-				return;
-			}
-			const dexItem = Dex.items.get(t);
-			if (!dexItem.exists) return this.errorReply("Unknown item.");
-
-			state.pendingItemName = dexItem.name;
-			delete state.itemOptions;
-			setState(user.id, state);
-			refreshGamePage(user);
-		},
-
-		giveitem(target, room, user) {
-			const state = getState(user.id);
-			if (!state?.pendingItemName) return this.errorReply("No item pending.");
-			const t = target.trim();
-
-			if (t === 'skip') {
-				delete state.pendingItemName;
-				delete state.purchasedItem;
-				delete state.isRotationalItem;
-				delete state.pendingItemIsEvo;
-				delete state.pendingConsumableType;
-				setState(user.id, state);
-				refreshGamePage(user);
-				return;
-			}
-
-			const slot = parseInt(t) - 1;
-			if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
-
-			const mon = state.team[slot];
-			const dexNewItem = Dex.items.get(state.pendingItemName);
-			const dexSpecies = Dex.species.get(toID(mon.species));
-
-			let evoTarget = '';
-			if (state.pendingItemIsEvo) {
-				const evoList = dexSpecies.evos;
-				if (evoList) {
-					for (const newEvo of evoList) {
-						const evoData = Dex.species.get(newEvo);
-						if (evoData.evoType === 'useItem' && toID(evoData.evoItem) === toID(dexNewItem.name)) {
-							evoTarget = evoData.id;
-							break;
-						}
+				if (hp < 40) {
+					if (hyperItem && bp >= hyperItem.cost) {
+						usedItem = hyperItem;
+						healAmt = 120;
+					} else if (superItem && bp >= superItem.cost) {
+						usedItem = superItem;
+						healAmt = 60;
 					}
-				}
-				if (!evoTarget) return this.errorReply("That Pokémon can't evolve with this item.");
-			}
-
-			if (state.purchasedItem) {
-				const item = ROTATIONAL_ITEM_POOL[state.purchasedItem] ?? SHOP_ITEMS[state.purchasedItem];
-				if (item) {
-					state.battlePoints -= item.cost;
-					if (state.isRotationalItem) {
-						state.rotationalShop = state.rotationalShop.filter(k => k !== state.purchasedItem);
-					}
-				}
-			}
-
-			if (state.pendingItemIsEvo) {
-				mon.species = evoTarget;
-				mon.expType = getExpType(evoTarget);
-				const evoName = Dex.species.get(evoTarget).name;
-				state.notification = `<b>${dexSpecies.name}</b> evolved into <b>${evoName}</b>!`;
-			} else {
-				if (dexNewItem.forcedForme && dexSpecies.otherFormes?.includes(dexNewItem.forcedForme)) {
-					mon.species = toID(dexNewItem.forcedForme);
-				} else if (mon.heldItem) {
-					const dexOldItem = Dex.items.get(mon.heldItem);
-					if (dexOldItem.forcedForme && dexSpecies.otherFormes?.includes(dexOldItem.forcedForme)) {
-						mon.species = toID(dexSpecies.changesFrom ?? dexSpecies.baseSpecies);
+				} else {
+					if (superItem && bp >= superItem.cost) {
+						usedItem = superItem;
+						healAmt = 60;
 					}
 				}
 
-				mon.heldItem = toID(state.pendingItemName);
-				state.notification = `Gave <b>${Utils.escapeHTML(dexNewItem.name)}</b> to <b>${dexSpecies.name}</b>!`;
-			}
+				if (!usedItem) return this.errorReply("Not enough BP for Q Heal.");
 
-			delete state.pendingItemName;
-			delete state.purchasedItem;
-			delete state.isRotationalItem;
-			delete state.pendingItemIsEvo;
-			setState(user.id, state);
-			refreshGamePage(user);
-		},
+				state.battlePoints -= usedItem.cost;
+				mon.currentHp = Math.min(100, hp + healAmt);
+				state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b> was Q-Healed using a ${usedItem.name}! (${hp}% → ${mon.currentHp}%)`;
+			} else if (type === 'cure') {
+				if (hp <= 0 || !mon.status) return this.errorReply("Pokémon cannot be Q Cured.");
 
-		useshopitem(target, room, user) {
-			const state = getState(user.id);
-			if (!state?.purchasedItem) return this.errorReply("No item selected.");
+				const cureItem = Object.values(SHOP_ITEMS).find(i => i.type === 'cureStatus');
+				if (!cureItem) return this.errorReply("No cure item found in shop.");
+				if (bp < cureItem.cost) return this.errorReply("Not enough BP for Q Cure.");
 
-			const t = target.trim();
-
-			if (t === 'skip') {
-				delete state.purchasedItem;
-				delete state.pendingConsumableType;
-				delete state.isRotationalItem;
-				setState(user.id, state);
-				refreshGamePage(user);
-				return;
-			}
-
-			const itemKey = state.purchasedItem;
-			const item = SHOP_ITEMS[itemKey] ?? ROTATIONAL_ITEM_POOL[itemKey];
-			if (!item) return this.errorReply("Unknown item.");
-
-			const slot = parseInt(t) - 1;
-			if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
-			const mon = state.team[slot];
-			const hp = mon.currentHp ?? 100;
-
-			if (item.type === 'healHP') {
-				if (hp >= 100) return this.errorReply("That Pokémon is already at full HP.");
-				state.battlePoints -= item.cost;
-				let healAmt = 20;
-				switch (item.name) {
-				case 'Potion': healAmt = 30; break;
-				case 'Super Potion': healAmt = 60; break;
-				case 'Hyper Potion': healAmt = 120; break;
-				case 'Max Potion': healAmt = 100; break;
-				}
-				mon.currentHp = item.name === 'Max Potion' ? 100 : Math.min(100, hp + healAmt);
-				state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b> restored HP! (${hp}% → ${mon.currentHp}%)`;
-			} else if (item.type === 'cureStatus') {
-				if (hp <= 0) return this.errorReply("Can't cure a fainted Pokémon.");
-				if (!mon.status) return this.errorReply("That Pokémon has no status condition.");
-				state.battlePoints -= item.cost;
+				state.battlePoints -= cureItem.cost;
 				const oldStatus = mon.status;
 				delete mon.status;
-				state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b>'s ${oldStatus.toUpperCase()} was cured!`;
-			} else if (item.type === 'revive') {
-				if (hp > 0) return this.errorReply("That Pokémon hasn't fainted.");
-				state.battlePoints -= item.cost;
-
-				mon.currentHp = (item.name === 'Max Revive' || mon.species === 'shedinja') ? 100 : 50;
-				delete mon.status;
-
-				state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b> was revived${item.name === 'Max Revive' ? ' to full health' : ''}!`;
+				state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b>'s ${oldStatus.toUpperCase()} was Q-Cured!`;
+			} else {
+				return this.errorReply("Unknown quick action type.");
 			}
 
-			delete state.purchasedItem;
-			delete state.pendingConsumableType;
-			delete state.isRotationalItem;
 			setState(user.id, state);
 			refreshGamePage(user);
 		},
