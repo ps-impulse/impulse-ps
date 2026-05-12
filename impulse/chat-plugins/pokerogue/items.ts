@@ -22,27 +22,6 @@ export interface ShopItem {
 	minFloor: number;
 }
 
-export interface RotationalItem {
-	name: string;
-	cost: number;
-	icon: string;
-	type: ItemType;
-	desc: string;
-	minFloor: number;
-}
-
-export interface TMItem extends RotationalItem {
-	move: string;
-}
-
-export const TM_LIST: Record<string, TMItem> =
-        JSON.parse(FS(`${ROGUELIKE_DATA_PATH}/tmdb.json`).readSync());
-
-export const ROTATIONAL_ITEM_POOL: Record<string, RotationalItem | TMItem> =
-        JSON.parse(FS(`${ROGUELIKE_DATA_PATH}/itemdb.json`).readSync());
-
-Object.assign(ROTATIONAL_ITEM_POOL, TM_LIST);
-
 export const SHOP_ITEMS: Record<string, ShopItem> =
         JSON.parse(FS(`${ROGUELIKE_DATA_PATH}/shopdb.json`).readSync());
 
@@ -86,78 +65,4 @@ export function genItem(quantity: number, extraArg?: PokemonSet[] | string): str
 		}
 	}
 	return items;
-}
-
-export function rollShop(team: PokemonSet[], streak: number): string[] {
-	const rotationalShop: string[] = [];
-
-	function checkForEvolution(pokemon: PokemonSet, itemName: string): boolean {
-		const evoList = Dex.species.get(pokemon.species).evos;
-		if (!evoList) return false;
-		for (const newEvo of evoList) {
-			if (Dex.species.get(newEvo).evoType === 'useItem' &&
-				Dex.species.get(newEvo).evoItem === itemName) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	let viableItems: string[] = [];
-
-	for (const index of Object.keys(ROTATIONAL_ITEM_POOL)) {
-		const poolItem = ROTATIONAL_ITEM_POOL[index];
-		if (poolItem.minFloor > streak) continue;
-
-		const dexItem = Dex.items.get(poolItem.name);
-
-		if (poolItem.type === 'item') {
-			if (dexItem.isNonstandard === 'CAP') continue;
-			const isViable = dexItem.itemUser || dexItem.zMove || Object.keys(dexItem).some(k => {
-				return typeof (dexItem as any)[k] === 'function';
-			});
-			if (dexItem.itemUser && !team.some(p => dexItem.itemUser?.includes(p.species))) continue;
-			if (!isViable) continue;
-		} else if (poolItem.type === 'evolveItem') {
-			// only include evolution items if team member can use them
-			if (!team.some(p => checkForEvolution(p, dexItem.name))) continue;
-		}
-
-		viableItems.push(index);
-	}
-
-	while (rotationalShop.length < 5) {
-		let potential: string[] = [];
-		const randomNo = Math.floor(Math.random() * 100);
-
-		// shop weightings: 70% items, 20% tms, 10% evolution items
-		if (randomNo > 30) {
-			potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'item');
-		} else if (randomNo > 10) {
-			potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'TM');
-			if (!potential.length) {
-				potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'item');
-			}
-		} else {
-			potential = viableItems.filter(item =>
-				ROTATIONAL_ITEM_POOL[item].type === 'evolveItem' ||
-				Dex.items.get(item)?.itemUser
-			);
-			if (!potential.length) {
-				potential = viableItems.filter(item => ROTATIONAL_ITEM_POOL[item].type === 'item');
-			}
-		}
-
-		for (let i = potential.length - 1; i > 0; i--) {
-			const j = Math.floor(Math.random() * (i + 1));
-			[potential[i], potential[j]] = [potential[j], potential[i]];
-		}
-		const winner = potential.pop();
-		if (!winner) break;
-
-		rotationalShop.push(winner);
-		viableItems = viableItems.filter(e => e !== winner);
-	}
-
-	return rotationalShop;
 }

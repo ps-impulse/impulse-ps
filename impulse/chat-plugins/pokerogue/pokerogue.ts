@@ -1,6 +1,6 @@
 import { Utils } from '../../../lib';
 import { CATCH_RATES } from './pokemon-basic-data';
-import { SHOP_ITEMS, ROTATIONAL_ITEM_POOL, type TMItem, genItem, rollShop } from './items';
+import { SHOP_ITEMS, genItem } from './items';
 import { type PokemonEntry, type PokeRogueState, type StatusCondition } from './types';
 import { getState, setState, deleteState, savedData, saveAllData } from './state';
 import {
@@ -333,7 +333,6 @@ export const commands: Chat.ChatCommands = {
 					team: [],
 					battlePoints: STARTING_BP,
 					timesRerolled: 0,
-					rotationalShop: [],
 					keyItems: ['Exp. Charm', 'Exp. All', 'Exp. All'],
 					inventory: { pokeball: 5, greatball: 0, ultraball: 0, masterball: 0 },
 					pendingChoice: pickStarterOptions(),
@@ -362,7 +361,6 @@ export const commands: Chat.ChatCommands = {
 				team: [],
 				battlePoints: STARTING_BP,
 				timesRerolled: 0,
-				rotationalShop: [],
 				keyItems: ['Exp. Charm', 'Exp. All', 'Exp. All'],
 				inventory: { pokeball: 5, greatball: 0, ultraball: 0, masterball: 0 },
 				pendingChoice: pickStarterOptions(),
@@ -467,7 +465,6 @@ export const commands: Chat.ChatCommands = {
 			refreshGamePage(user);
 		},
 
-		// Merged: learnmove, swapmon, pickitem, giveitem, useshopitem, teachtm
 		resolve(target, room, user) {
 			const state = getState(user.id);
 			if (!state) return;
@@ -533,7 +530,6 @@ export const commands: Chat.ChatCommands = {
 				if (rest === 'skip') {
 					delete state.pendingItemName;
 					delete state.purchasedItem;
-					delete state.isRotationalItem;
 					delete state.pendingItemIsEvo;
 					delete state.pendingConsumableType;
 				} else {
@@ -560,12 +556,9 @@ export const commands: Chat.ChatCommands = {
 					}
 
 					if (state.purchasedItem) {
-						const item = ROTATIONAL_ITEM_POOL[state.purchasedItem] ?? SHOP_ITEMS[state.purchasedItem];
+						const item = SHOP_ITEMS[state.purchasedItem];
 						if (item) {
 							state.battlePoints -= item.cost;
-							if (state.isRotationalItem) {
-								state.rotationalShop = state.rotationalShop.filter(k => k !== state.purchasedItem);
-							}
 						}
 					}
 
@@ -589,7 +582,6 @@ export const commands: Chat.ChatCommands = {
 
 					delete state.pendingItemName;
 					delete state.purchasedItem;
-					delete state.isRotationalItem;
 					delete state.pendingItemIsEvo;
 				}
 				break;
@@ -600,10 +592,9 @@ export const commands: Chat.ChatCommands = {
 				if (rest === 'skip') {
 					delete state.purchasedItem;
 					delete state.pendingConsumableType;
-					delete state.isRotationalItem;
 				} else {
 					const itemKey = state.purchasedItem;
-					const item = SHOP_ITEMS[itemKey] ?? ROTATIONAL_ITEM_POOL[itemKey];
+					const item = SHOP_ITEMS[itemKey];
 					if (!item) return this.errorReply("Unknown item.");
 
 					const slot = parseInt(rest) - 1;
@@ -640,53 +631,6 @@ export const commands: Chat.ChatCommands = {
 
 					delete state.purchasedItem;
 					delete state.pendingConsumableType;
-					delete state.isRotationalItem;
-				}
-				break;
-			}
-
-			case 'teachtm': {
-				if (!state.moveToLearn || !state.purchasedItem) return this.errorReply("No TM pending.");
-				const itemKey = state.purchasedItem;
-				const item = ROTATIONAL_ITEM_POOL[itemKey] ?? SHOP_ITEMS[itemKey];
-
-				if (rest === 'skip') {
-					delete state.moveToLearn;
-					delete state.purchasedItem;
-					delete state.isRotationalItem;
-					delete state.pokemonForTM;
-				} else {
-					const slot = parseInt(rest) - 1;
-					if (isNaN(slot) || slot < 0 || slot >= state.team.length) return this.errorReply("Invalid team slot.");
-					const mon = state.team[slot];
-
-					const canLearn = Dex.species.getFullLearnset(toID(mon.species))
-						.some(l => Object.keys(l.learnset ?? {}).includes(toID(state.moveToLearn!)));
-					if (!canLearn) return this.errorReply("That Pokémon can't learn this TM move.");
-					if (mon.moves.includes(state.moveToLearn)) return this.errorReply("That Pokémon already knows this move.");
-
-					state.battlePoints -= item.cost;
-					if (state.isRotationalItem) state.rotationalShop = state.rotationalShop.filter(k => k !== itemKey);
-
-					state.pokemonForTM = slot;
-
-					if (mon.moves.length < 4) {
-						mon.moves.push(state.moveToLearn);
-						if (!mon.ppLeft) mon.ppLeft = mon.moves.map(m => Math.floor((Dex.moves.get(m).pp ?? 5) * (8 / 5)));
-						else mon.ppLeft.push(Math.floor((Dex.moves.get(state.moveToLearn).pp ?? 5) * (8 / 5)));
-						state.notification = `<b>${Dex.species.get(toID(mon.species)).name}</b> learned <b>${Dex.moves.get(state.moveToLearn).name}</b>!`;
-						delete state.moveToLearn;
-						delete state.purchasedItem;
-						delete state.isRotationalItem;
-						delete state.pokemonForTM;
-					} else {
-						state.pendingMoves = state.pendingMoves ?? [];
-						state.pendingMoves.unshift({ pokemonIndex: slot, move: state.moveToLearn, speciesName: mon.species });
-						delete state.moveToLearn;
-						delete state.purchasedItem;
-						delete state.isRotationalItem;
-						delete state.pokemonForTM;
-					}
 				}
 				break;
 			}
@@ -781,21 +725,6 @@ export const commands: Chat.ChatCommands = {
 			refreshGamePage(user);
 		},
 
-		reroll(target, room, user) {
-			const state = getState(user.id);
-			if (!state) return;
-			if (state.battleRoomId) return this.errorReply("Can't reroll during a battle.");
-			const price = 2 + (state.timesRerolled ?? 0);
-			if (price > (state.battlePoints ?? 0)) return this.errorReply(`Not enough BP! Need ${price} BP.`);
-			state.battlePoints -= price;
-			state.timesRerolled = (state.timesRerolled ?? 0) + 1;
-
-			const pseudoTeam = state.team.map(m => ({ species: Dex.species.get(toID(m.species)).name } as PokemonSet));
-			state.rotationalShop = rollShop(pseudoTeam, (state.floor ?? 1) - 1);
-			setState(user.id, state);
-			refreshGamePage(user);
-		},
-
 		buy(target, room, user) {
 			const state = getState(user.id);
 			if (!state || state.gameOver) return this.errorReply("No active run.");
@@ -806,19 +735,13 @@ export const commands: Chat.ChatCommands = {
 			}
 
 			const key = toID(target);
-			const item = SHOP_ITEMS[key] || ROTATIONAL_ITEM_POOL[key];
+			const item = SHOP_ITEMS[key];
 			if (!item) return this.errorReply("Unknown item.");
 
 			const bp = state.battlePoints ?? 0;
 			if (item.cost > bp) return this.errorReply(`Not enough BP! Need ${item.cost} BP.`);
 
 			if (item.minFloor > (state.floor ?? 1)) return this.errorReply("Your floor isn't high enough for this item.");
-
-			const isRotational = !!ROTATIONAL_ITEM_POOL[key];
-			const isPermanent = !!SHOP_ITEMS[key];
-			if (isRotational && !isPermanent && !state.rotationalShop?.includes(key)) {
-				return this.errorReply("That item isn't currently in the shop.");
-			}
 
 			if (item.type === 'key') {
 				const ownedCount = (state.keyItems ?? []).filter(k => k === item.name).length;
@@ -834,7 +757,6 @@ export const commands: Chat.ChatCommands = {
 				state.battlePoints -= item.cost;
 				state.keyItems = state.keyItems ?? [];
 				state.keyItems.push(item.name);
-				if (isRotational) state.rotationalShop = state.rotationalShop.filter(k => k !== key);
 
 				const stackMsg = ownedCount > 0 ? ` (Stack ${ownedCount + 1})` : '';
 				state.notification = `Bought key item: <b>${item.name}</b>${stackMsg}!`;
@@ -852,7 +774,6 @@ export const commands: Chat.ChatCommands = {
 
 			if (item.type === 'pokeball') {
 				state.battlePoints -= item.cost;
-				if (isRotational) state.rotationalShop = state.rotationalShop.filter(k => k !== key);
 
 				state.inventory = state.inventory || {};
 				state.inventory[key] = (state.inventory[key] || 0) + 1;
@@ -867,7 +788,6 @@ export const commands: Chat.ChatCommands = {
 				const pseudoTeam = state.team.map(m => ({ species: Dex.species.get(toID(m.species)).name } as PokemonSet));
 				const options = genItem(3, pseudoTeam);
 				state.battlePoints -= item.cost;
-				if (isRotational) state.rotationalShop = state.rotationalShop.filter(k => k !== key);
 				state.itemOptions = options;
 				state.purchasedItem = key;
 				setState(user.id, state);
@@ -878,18 +798,7 @@ export const commands: Chat.ChatCommands = {
 			if (item.type === 'item' || item.type === 'evolveItem') {
 				state.pendingItemName = item.name;
 				state.purchasedItem = key;
-				state.isRotationalItem = isRotational;
 				state.pendingItemIsEvo = item.type === 'evolveItem';
-				setState(user.id, state);
-				refreshGamePage(user);
-				return;
-			}
-
-			if (item.type === 'TM') {
-				const move = (item as TMItem).move;
-				state.moveToLearn = move;
-				state.purchasedItem = key;
-				state.isRotationalItem = isRotational;
 				setState(user.id, state);
 				refreshGamePage(user);
 				return;
@@ -1125,7 +1034,6 @@ export const commands: Chat.ChatCommands = {
 			}
 		},
 
-		// Merged: qheal + qcure → qaction [heal|cure] [slot]
 		qaction(target, room, user) {
 			const state = getState(user.id);
 			if (!state || state.gameOver || state.battleRoomId) return this.errorReply("Cannot use quick actions right now.");
@@ -1392,8 +1300,6 @@ export const handlers: Chat.Handlers = {
 				detailMsgs.join('<br>');
 
 			state.timesRerolled = 0;
-			const pseudoTeam = state.team.map(m => ({ species: Dex.species.get(toID(m.species)).name } as PokemonSet));
-			state.rotationalShop = rollShop(pseudoTeam, prevFloor);
 		} else {
 			delete state.pendingMoves;
 			delete state.pendingSwap;

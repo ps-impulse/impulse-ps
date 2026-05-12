@@ -1,6 +1,6 @@
 import { Utils } from '../../../lib';
 import { Table } from '../../utils';
-import { SHOP_ITEMS, ROTATIONAL_ITEM_POOL } from './items';
+import { SHOP_ITEMS } from './items';
 import { LEGENDARY_TAGS, type PokemonEntry, type PokeRogueState } from './types';
 import { savedData } from './state';
 import { expForLevel, getLevelUpMoves } from './pokemon';
@@ -251,7 +251,7 @@ function renderTeamTableRow(mon: PokemonEntry, actionButton?: string): string {
 // ─── Shop Helpers ─────────────────────────────────────────────────────────────
 
 function renderShopTable(
-	items: [string, typeof SHOP_ITEMS[string] | typeof ROTATIONAL_ITEM_POOL[string]][],
+	items: [string, typeof SHOP_ITEMS[string]][],
 	bp: number,
 	keyItems: string[],
 	cmd: string,
@@ -373,28 +373,6 @@ function renderPendingMoves(state: PokeRogueState): string {
 	return buf;
 }
 
-function renderTeachTM(state: PokeRogueState): string {
-	const moveName = Dex.moves.get(state.moveToLearn).name;
-	let buf = `<h2 class="pr-choice-heading">Teach ${Utils.escapeHTML(moveName)}?</h2>`;
-	buf += `<div style="font-size:12px;color:#aaa;margin-bottom:8px">Choose a Pokémon to learn <b style="color:#c4a8ff">${Utils.escapeHTML(moveName)}</b>:</div><div class="pr-choice-grid">`;
-
-	for (let i = 0; i < state.team.length; i++) {
-		const mon = state.team[i];
-		const spName = Dex.species.get(toID(mon.species)).name;
-		const canLearn = Dex.species.getFullLearnset(toID(mon.species)).some(l => Object.keys(l.learnset ?? {}).includes(toID(state.moveToLearn!)));
-		const alreadyKnows = mon.moves.includes(state.moveToLearn!);
-		const disabled = !canLearn || alreadyKnows;
-		const reason = alreadyKnows ? 'already knows' : !canLearn ? 'cannot learn' : '';
-
-		const flexHtml = `<span style="font-size:12px;font-weight:500">${spName}</span> <span style="font-size:10px;color:#888">Lv. ${mon.level}${reason ? ` (${reason})` : ''}</span>`;
-		const btnHtml = disabled ? '' : renderBtn(`/pokerogue resolve teachtm ${i + 1}`, 'Teach', 'pr-pick-btn');
-		buf += renderChoiceRow(getSpriteWithBall(mon.species, 40, mon.ball), flexHtml, btnHtml, disabled ? 'opacity:.45' : '');
-	}
-
-	buf += renderBtn('/pokerogue resolve teachtm skip', 'Cancel <small style="color:#888">(refund)</small>', 'pr-btn', 'width:100%;padding:8px;margin-top:2px') + `</div>`;
-	return buf;
-}
-
 function renderItemOptions(state: PokeRogueState): string {
 	let buf = `<h2 class="pr-choice-heading">Choose an item!</h2><div class="pr-choice-grid">`;
 	for (const itemName of state.itemOptions!) {
@@ -424,7 +402,7 @@ function renderGiveItem(state: PokeRogueState): string {
 }
 
 function renderConsumable(state: PokeRogueState): string {
-	const consumableItem = SHOP_ITEMS[state.purchasedItem!] ?? ROTATIONAL_ITEM_POOL[state.purchasedItem!];
+	const consumableItem = SHOP_ITEMS[state.purchasedItem!];
 	const consumableType = state.pendingConsumableType!;
 
 	let buf = `<h2 class="pr-choice-heading">Use ${Utils.escapeHTML(consumableItem?.name ?? state.purchasedItem!)}?</h2>`;
@@ -568,23 +546,10 @@ function renderMainView(state: PokeRogueState, user: User): string {
 function renderShopView(state: PokeRogueState): string {
 	const bp = state.battlePoints ?? 0;
 	const currentFloor = state.floor ?? 1;
-	const rerollCost = 2 + (state.timesRerolled ?? 0);
 
 	let buf = renderStatBar(state, true);
 
-	if (state.rotationalShop?.length) {
-		buf += `<div class="pr-section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span>Current deals</span>`;
-		buf += renderBtn(rerollCost > bp ? null : `/pokerogue reroll`, `Reroll (${rerollCost} BP)`, 'pr-shop-buy', 'font-size:10px;padding:4px 8px', rerollCost > bp);
-		buf += `</div>`;
-
-		const rotItems = state.rotationalShop
-			.map(key => [key, ROTATIONAL_ITEM_POOL[key]] as [string, typeof ROTATIONAL_ITEM_POOL[string]])
-			.filter(([, item]) => item && item.minFloor <= currentFloor);
-		buf += renderShopTable(rotItems, bp, state.keyItems ?? [], 'pokerogue buy');
-		buf += `<div style="margin:10px 0 5px"></div>`;
-	}
-
-	buf += `<div class="pr-section-title">Always available</div>`;
+	buf += `<div class="pr-section-title">Shop</div>`;
 	const permItems = Object.entries(SHOP_ITEMS).filter(([, item]) => item.minFloor <= currentFloor);
 	buf += renderShopTable(permItems, bp, state.keyItems ?? [], 'pokerogue buy');
 
@@ -681,13 +646,10 @@ function renderGuideView(): string {
 	buf += renderGuidePanel(`<ul style="margin:0;padding-left:16px"><li><b>Starter</b> — choose one of 5 randomly drawn traditional starters at Level 5.</li><li><b>Catching</b> — buy Poké Balls from the permanent shop and throw them during wild encounters!</li><li>If your team is already at 6, you are offered to swap the caught Pokémon into a slot, or release it back into the wild.</li><li><b>Bosses</b> — you cannot catch Trainer or Boss Pokémon (Floors 10, 20, 30, etc.).</li></ul>`);
 
 	buf += `<div class="pr-section-title">Economy & Battle Points (BP)</div>`;
-	buf += renderGuidePanel(`You start with <b>20 BP</b>.<ul style="margin:5px 0 0;padding-left:16px"><li><b>+5 BP</b> for every floor cleared.</li><li><b>+5 BP bonus</b> for defeating a Zone Boss (total +10 BP on boss floors).</li><li><b>Rerolling the shop</b> costs 2 BP the first time, then +1 BP per additional reroll on the same floor. The counter resets each floor.</li><li>The rotational shop refreshes automatically with 5 freshly rolled items each new floor. <b>Smart Rolling:</b> TMs and Evolution items will <i>only</i> appear in the rotational shop if a Pokémon currently on your team can legally learn or use them!</li></ul>`);
+	buf += renderGuidePanel(`You start with <b>20 BP</b>.<ul style="margin:5px 0 0;padding-left:16px"><li><b>+5 BP</b> for every floor cleared.</li><li><b>+5 BP bonus</b> for defeating a Zone Boss (total +10 BP on boss floors).</li></ul>`);
 
 	buf += `<div class="pr-section-title">Held items</div>`;
 	buf += renderGuidePanel(`Each Pokémon can hold one item. Species-locked items (e.g. Pikachu's Light Ball) and Z-Crystals are filtered to only compatible Pokémon. Some items shift a Pokémon's form on equip (e.g. Griseous Orb on Giratina). Items can be removed freely via the <b>Bag</b> screen — but there is no storage, so removed items are permanently lost. Berries and single-use items consumed mid-battle are removed automatically after use.`);
-
-	buf += `<div class="pr-section-title">TMs & move teaching</div>`;
-	buf += renderGuidePanel(`TMs appear in the rotational shop (filtered to your current team's compatibility). Buying a TM opens a Pokémon selection screen. If the target already has 4 moves, you enter the move-replacement flow: choose a slot to overwrite or skip. Cancelling the TM before assigning it to any Pokémon gives a full BP refund.`);
 
 	buf += `<div class="pr-section-title">Team management</div>`;
 	buf += renderGuidePanel(`From the main screen you can:<ul style="margin:5px 0 0;padding-left:16px"><li><b>Move</b> — reorder your Pokémon. The first slot is sent out first, so your lead goes at the top.</li><li><b>Release</b> — permanently remove a Pokémon. You cannot release your last Pokémon. Any held item is permanently lost on release.</li><li><b>Bag</b> — unequip held items from Pokémon (items are discarded, not stored).</li></ul>All team management is locked while an active battle room is open.`);
@@ -718,7 +680,6 @@ export function renderGamePage(state: PokeRogueState, user: User): string {
 	if (state.pendingChoice?.length) return buf + renderPendingChoice(state) + `</div></div>`;
 	if (state.pendingSwap) return buf + renderPendingSwap(state) + `</div></div>`;
 	if (state.pendingMoves?.length) return buf + renderPendingMoves(state) + `</div></div>`;
-	if (state.moveToLearn && state.purchasedItem && state.pokemonForTM === undefined) return buf + renderTeachTM(state) + `</div></div>`;
 	if (state.itemOptions?.length) return buf + renderItemOptions(state) + `</div></div>`;
 	if (state.pendingItemName) return buf + renderGiveItem(state) + `</div></div>`;
 	if (state.pendingConsumableType && state.purchasedItem) return buf + renderConsumable(state) + `</div></div>`;
