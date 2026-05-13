@@ -106,6 +106,10 @@ export function calcKillExp(
 	hasLuckyEgg = false,
 	isTrainer = false
 ): number {
+	// Official formula: expValue = (baseExp * level) / 5 + 1
+	// Trainer/Boss battles multiply by 1.5
+	// Then split by participant count
+	// Exp. Charm is handled globally downstream in applyExpShare
 	const b = getExpYield(enemySpeciesId);
 	const L = enemyLevel;
 	const s = Math.max(1, participantsCount);
@@ -116,6 +120,7 @@ export function calcKillExp(
 	expValue = Math.floor(expValue * a);
 	expValue = Math.floor(expValue / s);
 
+	// Apply Lucky Egg directly to the participant
 	if (hasLuckyEgg) {
 		expValue = Math.floor(expValue * 1.5);
 	}
@@ -228,11 +233,13 @@ export function getMovesLearnedBetween(speciesId: string, oldLevel: number, newL
 	return Array.from(new Set(learned));
 }
 
+// detrimental abilities — never assign to ai
 const BANNED_ABILITIES = new Set([
 	'truant', 'slowstart', 'defeatist', 'stall', 'klutz', 'illuminate',
 	'runaway', 'honeygather', 'pickup', 'frisk',
 ]);
 
+// abilities to weight higher
 const STRONG_ABILITIES = new Set([
 	'speedboost', 'drizzle', 'drought', 'sandstream', 'snowwarning',
 	'intimidate', 'download', 'protean', 'libero', 'magicguard',
@@ -310,6 +317,7 @@ function calcEVSpread(_species: Species, _floor: number): Record<string, number>
 	return { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
 }
 
+// status moves allowed in movesets
 const GOOD_STATUS_MOVES = new Set([
 	'thunderwave', 'willowisp', 'toxic', 'spore', 'sleeppowder',
 	'swordsdance', 'nastyplot', 'dragondance', 'calmmind', 'quiverdance',
@@ -811,18 +819,25 @@ export function genPokemon(
 // Official formula: Math.ceil(((1 + waveIndex/2 + (waveIndex/25)^2) * 1.2) / 2) * 2 + 2
 // where waveIndex = ceil(floor / 10) * 10
 export function levelScaleForFloor(floor: number): [number, number] {
+	// 1. Calculate the Level Cap (The ceiling for the current 10-floor bracket)
 	const waveIndex = Math.ceil(Math.max(1, floor) / 10) * 10;
 	const baseLevel = (1 + waveIndex / 2 + (waveIndex / 25) ** 2) * 1.2;
 	const cap = Math.ceil(baseLevel / 2) * 2 + 2;
 	const clampedCap = Math.max(2, cap);
 
+	// 2. BOSS WAVE OVERRIDE:
+	// If it is the end of a biome (Wave 10, 20, 30, etc.), the boss is EXACTLY the level cap.
+	// This ensures our Showdown Ruleset successfully detects the boss and applies shields!
 	if (floor % 10 === 0) {
 		return [clampedCap, clampedCap];
 	}
 
+	// 3. Calculate the Target Level for normal wild encounters
 	const currentBase = (1 + floor / 2 + (floor / 25) ** 2) * 1.2;
 	const currentTargetLevel = Math.ceil(currentBase / 2) * 2;
 
+	// 4. Generate the actual Min/Max level range for the encounter
+	// Normal enemies spawn slightly below the hard cap (clampedCap - 1)
 	const minLevel = Math.max(2, currentTargetLevel - 1);
 	const maxLevel = Math.max(minLevel, Math.min(clampedCap - 1, currentTargetLevel + 1));
 
@@ -927,6 +942,7 @@ export function applyExpAndLevelUp(
 
 	const bracketFloor = Math.ceil(currentFloor / 10) * 10;
 
+	// Level cap uses the official formula directly
 	const waveIndex = Math.ceil(Math.max(1, bracketFloor) / 10) * 10;
 	const baseLevel = (1 + waveIndex / 2 + (waveIndex / 25) ** 2) * 1.2;
 	const levelCap = Math.min(10000, Math.ceil(baseLevel / 2) * 2 + 2);
@@ -982,21 +998,20 @@ export function packPokemon(mon: PokemonEntry): string {
 	return `${name}||${mon.heldItem ?? ''}|${ability}|${mon.moves.join(',')}|${nature}||M|||${mon.level}|${tail}`;
 }
 
-export function packAIPokemon(set: AIPokemonSet, floor = 0): string {
+export function packAIPokemon(set: AIPokemonSet): string {
 	const sp = Dex.species.get(toID(set.species));
 	const name = sp.exists ? sp.name : set.species;
-	const nickname = floor > 0 ? `FLOOR:${floor}` : name;
 	const ivStr = `${set.ivs.hp},${set.ivs.atk},${set.ivs.def},${set.ivs.spa},${set.ivs.spd},${set.ivs.spe}`;
 	const evStr = `${set.evs.hp},${set.evs.atk},${set.evs.def},${set.evs.spa},${set.evs.spd},${set.evs.spe}`;
 	const movesStr = set.moves.map(m => Dex.moves.get(m).name || m).join(',');
 	const shinyStr = set.shiny ? 'S' : '';
-	return `${nickname}|${name}|${set.item}|${set.ability}|${movesStr}|${set.nature}|${evStr}|${set.gender}|${ivStr}|${shinyStr}|${set.level}|,,,${set.teraType}`;
+	return `${name}||${set.item}|${set.ability}|${movesStr}|${set.nature}|${evStr}|${set.gender}|${ivStr}|${shinyStr}|${set.level}|,,,${set.teraType}`;
 }
 
 export function packTeam(mons: PokemonEntry[]): string {
 	return mons.map(m => packPokemon(m)).join(']');
 }
 
-export function packAITeam(sets: AIPokemonSet[], floor = 0): string {
-	return sets.map(s => packAIPokemon(s, floor)).join(']');
+export function packAITeam(sets: AIPokemonSet[]): string {
+	return sets.map(s => packAIPokemon(s)).join(']');
 }
